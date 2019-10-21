@@ -1,0 +1,6 @@
+"0","modelo_elastic1 <- cv.glmnet(NBA_train_x, NBA_train_y, alpha = 0.325)"
+"0","min(modelo_elastic1$cvm)"
+"1","[1]"
+"1"," 2.492349e+13"
+"1","
+"

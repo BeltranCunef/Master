@@ -1,0 +1,7 @@
+"0","prediction <- predict(modelo_elastic1, s = modelo_elastic1$lambda.min, NBA_test_x)"
+"0","media_MSE <- mean((NBA_test_y - prediction)^2)"
+"0","media_MSE"
+"1","[1]"
+"1"," 3.311422e+13"
+"1","
+"

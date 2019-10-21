@@ -1,0 +1,2 @@
+"0","regres01 <- lm(Salary~., data = mData)"
+"0","outlierTest(regres01)"

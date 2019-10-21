@@ -1,0 +1,5 @@
+"0","NBA_train_x <- model.matrix(Salary ~ ., NBA_train)[,-1]"
+"0","NBA_train_y <- NBA_train$Salary"
+"0",""
+"0","NBA_test_x <- model.matrix(Salary~., NBA_test)[, -1]"
+"0","NBA_test_y <- NBA_test$Salary"

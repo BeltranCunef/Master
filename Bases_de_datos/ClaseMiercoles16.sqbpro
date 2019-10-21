@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="C:/Users/beltro/Documents/Bases de datos/Archivos/nycflights17.db" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><current_tab id="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="4199"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><current_table name="airlines"/><default_encoding codec=""/><browse_table_settings/></tab_browse><tab_sql><sql name="SQL 1">--****************
+--JOIN
+--****************
+SELECT COUNT(*)
+FROM flights FL
+INNER JOIN airports RP ON RP.faa = FL.dest
+LIMIT 20
+--**********
+--todos los vuelos con un aeropuerto y todos los aeropuertos con un vuelo que corresponde con el aeropuerto
+--el mismo aeropuerto puede aparecer 2 veces
+--**********
+--flights solo son 259857 y unido con airports tambien, lo que quiere decir que todos los vuelos tienen
+--un aeropuerto, con un left en vez de inner nos da lo mismo, coinciden.
+--**********
+--con un left join aparecera siempre la tabla completa, lo que no apareceran sin los aeropuertos que no esten
+--en la tabla
+--**********
+--un right join es lo mismo que un left cambiado, es decir,
+--from a lj b = from b rb a
+SELECT COUNT(*)
+FROM airports RP
+LEFT JOIN flights FL ON FL.dest = RP.faa
+--**********
+--la diferencia entre lo que arroja esto y lo anterior son los aeropuertos sin vuelos
+--**********
+SELECT DISTINCT dest FROM flights --104 aeropuertos distintos sin vuelo
+--**********
+SELECT * FROM airports WHERE faa NOT IN
+(SELECT DISTINCT dest FROM flights) -- 1229 aeropuertos
+</sql><sql name="SQL 2">--************
+--TODOS LOS VUELOS A ORLANDO Y LA CAPACIDAD DE CADA AVION
+--************
+SELECT 
+MIN(PL.seats) AS MINCAPACITY, MAX(PL.seats)AS MAXCAPACITY
+FROM flights FL
+LEFT JOIN planes PL ON PL.tailnum = FL.tailnum
+WHERE FL.dest IN 
+(SELECT faa FROM airports WHERE name LIKE '%ORLANDO%')
+--**********
+--seleccioname el min y max de plazas de los vuelos unidos a los aviones en los cuales el destino del vuelo
+--han sido todos los aeropuertos cuyo nombre incluya orlando</sql><sql name="SQL 3">SELECT
+FL.*, RP.name
+FROM flights FL
+LEFT JOIN airports RP ON RP.faa = FL.dest
+</sql><current_tab id="2"/></tab_sql></sqlb_project>

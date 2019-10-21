@@ -1,0 +1,2 @@
+"0","cutoff <- 4/(nrow(mData) - length(regres01$coefficients) - 2)"
+"0","plot(regres01, which = 4, cook.levels = cutoff)"

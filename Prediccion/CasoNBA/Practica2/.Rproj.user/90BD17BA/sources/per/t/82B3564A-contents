@@ -1,0 +1,204 @@
+---
+title: "Practica2"
+author: "Beltran"
+date: "16/10/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## LIBRARIES
+```{r LIBRARIES}
+library(tidyverse)
+library(leaps)
+library(ggplot2)
+library(ISLR)
+library(glmnet)
+library(caret)
+library(rsample)
+library(dplyr)
+library(gvlma)
+library(car)
+library(GGally)
+library(corrplot)
+library(PerformanceAnalytics)
+```
+## ANALISIS EXPLORATORIO
+```{r LECTURA FICHERO}
+mData <- read.csv("nba.csv")
+```
+Mi objetivo es elaborar un modelo predictivo que permita determinar con precisión el salario de un jugador de la NBA. Para ello dispongo de un fichero .csv llamado "nba".
+```{r VISUALIZACION DATOS}
+names(mData)
+str(mData)
+```
+El fichero cuenta con 485 observaciones correspondientes a 28 variables. Compruebo a que porcentaje de las observaciones les falta al menos una variable. 
+```{r COMPROBACION NA´S}
+1 - (sum(complete.cases(mData)) / nrow(mData))
+```
+El 0,41% de las observaciones presentan NA´s, por ello procedo a excluirlas del data set.
+```{r EXCLUYENDO NA´S}
+mData <- na.omit(mData)
+```
+Elimino la variables categórica nommbre del jugador y país.
+```{r ELIMINO PLAYER Y COUNTRY}
+mData <- select(mData, -Player, -NBA_Country)
+```
+Analizo la dimensión del data set.
+```{r DIMENSION mDATA}
+dim(mData)
+```
+Una vez excluidos los valores NA, el data set contiene 483 observaciones correspondientes a 25 variables. A continuación analizo la proporción observaciones / predictores.
+```{r OBSERVACIONES / PREDICTORES}
+483 / 25
+```
+El número de observaciones es superior en algo más de 19 veces al número de predictores. Por tanto, la regresión por mínimos cuadrados podría resultar adecuado.
+A continuación estudio los valores atípicos e influyentes y procedo a su eliminación de la muestra.
+### Valores atípicos y/o influyentes.
+```{r REGRESION, OBSERVACIONES ANOMALAS Y REPRESENTACION CON LA DISTANCIA DE COOK}
+regres01 <- lm(Salary~., data = mData)
+outlierTest(regres01)
+cutoff <- 4/(nrow(mData) - length(regres01$coefficients) - 2)
+plot(regres01, which = 4, cook.levels = cutoff)
+abline(h = cutoff, lty = 2, col = "red")
+```
+Los valores extraidos a través del outliertest y observados en la distancia de Cook corresponden con las observaciones 114, 143, 166 y 328. Procedo a la eliminación de la muestra de dichos observaciones,
+```{r ELIMINACION DE VALORES ANOMALOS Y/O INFLUYENTES}
+mData <- mData[-114,]
+mData <- mData[-143,]
+mData <- mData[-166,]
+mData <- mData[-328,]
+```
+Establezco de nuevo la regresión sin los valores influyentes.
+```{r NUEVA REGRESION}
+regres01 <- lm(Salary~., data = mData)
+```
+### Matriz de correlaciones
+Estudio la relación entre las variables del modelo.Para poder obtener la matriz de correlaciones he de eliminar la única variable categórica que queda en el modelo, el equipo.
+```{r CORRELACIONES}
+mData <- select(mData, -Tm)
+round(cor(mData),3)
+```
+Para una mejor visualización de las relaciones entre las variables ploteo la matriz de correlaciones.
+```{r PLOT CORRELACIONES}
+corrplot(round(cor(mData),10), type = 'upper', order = "hclust", tl.col = "black", tl.cex = 0.65, tl.srt = 45)
+```
+Atendiendo a las relaciones entre las variables del modelo, crearé un modelo auxiliar en el cual únicamente se encuentren aquellas variables que guarden una relación significtiva entre sí.
+```{r MODELO AUXILIAR}
+mDataAux <- select(mData,Salary,VORP,OWS,WS,Age,NBA_DraftNumber,AST.,USG.,BPM,OBPM,PER,DWS,G,MP)
+```
+```{r REGRESION AUX}
+regres02 <- lm(Salary~VORP + OWS + WS + Age + NBA_DraftNumber + AST. + USG. + BPM + OBPM +
+                 PER + DWS + G + MP, data = mDataAux)
+```
+## PRIMER MODELO, TODAS LAS VARIABLES
+### Training y test set
+Dividimos la muestra en un 70/30, el 70% de las observaciones se asignarán al training y el 30% restante al test.
+```{r TRAINING Y SET SPLIT}
+set.seed(123)
+NBA_split <- initial_split(mData, prop = .7, strata = "Salary")
+NBA_train <- training(NBA_split)
+NBA_test  <- testing(NBA_split)
+```
+Generamos las matrices.
+```{r MATRICES}
+NBA_train_x <- model.matrix(Salary ~ ., NBA_train)[,-1]
+NBA_train_y <- NBA_train$Salary
+
+NBA_test_x <- model.matrix(Salary~., NBA_test)[, -1]
+NBA_test_y <- NBA_test$Salary
+```
+### Caret
+Aplico elastic net mediante le función del paquete CARET.
+```{r CARET}
+train_control <- trainControl(method = "cv", number = 10)
+
+caret_mod <- train(
+  x = NBA_train_x,
+  y = NBA_train_y,
+  method = "glmnet",
+  preProc = c("center", "scale", "zv", "nzv"),
+  trControl = train_control,
+  tuneLength = 5
+)
+
+caret_mod
+```
+Dados los valores obtenidos a la hora de realizar elastic net mediante el paquete caret, alfa igual a 0.325.
+### Elastic net
+```{r ELASTIC NET}
+modelo_elastic1 <- cv.glmnet(NBA_train_x, NBA_train_y, alpha = 0.325)
+min(modelo_elastic1$cvm)
+```
+Obtengo la media de MSE en la muestra correspondiente a test.
+```{r MEDIA MSE MODELO}
+prediction <- predict(modelo_elastic1, s = modelo_elastic1$lambda.min, NBA_test_x)
+media_MSE <- mean((NBA_test_y - prediction)^2)
+media_MSE
+```
+Guardo la media del error del primer modelo.
+```{r GUARDO ERROR MODELO}
+errormData <- media_MSE
+```
+## SEGUNDO MODELO, SOLO LAS VARIABLES CORRELADAS
+Uso la anterior division training y set. Lo que si hago es generar de nuevo las matrices para este modelo.
+Generamos las matrices.
+```{r MATRICES DEL AUX}
+NBA_train_x2 <- model.matrix(Salary ~ ., NBA_train)[,-1]
+NBA_train_y2 <- NBA_train$Salary
+
+NBA_test_x2 <- model.matrix(Salary~., NBA_test)[, -1]
+NBA_test_y2 <- NBA_test$Salary
+```
+### Caret
+Aplico elastic net mediante le función del paquete CARET.
+```{r CARET DEL AUX}
+train_control <- trainControl(method = "cv", number = 10)
+
+caret_mod <- train(
+  x = NBA_train_x2,
+  y = NBA_train_y2,
+  method = "glmnet",
+  preProc = c("center", "scale", "zv", "nzv"),
+  trControl = train_control,
+  tuneLength = 5
+)
+
+caret_mod
+```
+### Elastic net
+```{r ELASTIC NET AUX}
+modelo_elasticAux <- cv.glmnet(NBA_train_x2, NBA_train_y2, alpha = 1)
+min(modelo_elasticAux$cvm)
+```
+Obtengo la media de MSE en la muestra correspondiente a test.
+```{r MEDIA MSE MODELO AUX}
+prediction <- predict(modelo_elasticAux, s = modelo_elasticAux$lambda.min, NBA_test_x2)
+media_MSE <- mean((NBA_test_y2 - prediction)^2)
+media_MSE
+```
+Guardo la media del error del primer modelo.
+```{r GUARDO ERROR MODELO AUX}
+errormDataAux <- media_MSE
+```
+## COMPARACION DE MODELOS
+Ahora para comparar qué modelo presenta un menor error realizo una simple operación, resto a la media del error cuadrático del modelo con todas las variables, la media del error cuadrático del modelo con las variables correladas.
+```{r COMPARACION MSE}
+errormData - errormDataAux
+1 - (errormDataAux / errormData)
+```
+El valor de la diferencia es positivo, lo que indica que el MSE del segundo modelo, aquel que presenta variables correladas es menor. El segundo modelo ofrece un 0,64% menos de error aproximadamente.
+```{r PLOT}
+variables <- c('Todas las variables', 'Variables correladas')
+valores <- c(errormData / 1e13, errormDataAux / 1e13)
+df <- data.frame(variables, valores)
+ggplot(df, aes( x = variables, y = valores)) + geom_point() 
+```
+## ESTIMACION DE LOS PREDICTORES DE AMBOS MODELOS
+```{r COEFICIENTES MODELO TODAS LAS VARIABLES}
+predict(modelo_elastic1, type = 'coefficients', s = modelo_elastic1$lambda.min)
+```
+```{r COEFICIENTES MODELO AUX}
+predict(modelo_elasticAux, type = 'coefficients', s = modelo_elasticAux$lambda.min)
+```

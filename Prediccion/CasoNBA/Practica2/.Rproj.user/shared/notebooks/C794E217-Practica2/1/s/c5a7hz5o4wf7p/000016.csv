@@ -1,0 +1,4 @@
+"0","variables <- c('Todas las variables', 'Variables correladas')"
+"0","valores <- c(errormData / 1e13, errormDataAux / 1e13)"
+"0","df <- data.frame(variables, valores)"
+"0","ggplot(df, aes( x = variables, y = valores)) + geom_point() "

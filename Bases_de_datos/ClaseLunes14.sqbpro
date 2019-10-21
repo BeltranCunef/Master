@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="C:/Users/beltro/Documents/Bases de datos/Archivos/nycflights17.db" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><current_tab id="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="4199"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><current_table name="airlines"/><default_encoding codec=""/><browse_table_settings><table schema="main" name="airlines" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk=""><sort/><column_widths/><filter_values/><display_formats/><hidden_columns/><plot_y_axes/></table><table schema="main" name="airports" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk=""><sort/><column_widths/><filter_values/><display_formats/><hidden_columns/><plot_y_axes/></table></browse_table_settings></tab_browse><tab_sql><sql name="SQL 1">--******************
+--WHERE clause
+--******************
+SELECT * FROM airports
+WHERE alt &gt; 3000
+LIMIT 5
+--******************
+--Con SELECT COUNT(*) lo unico que tiene que hacer es leer y devovler el conteo
+-- si hacemos un select * from corremos el peligro de colapsar el servidor porque tiene que enviar
+-- los registros a pantalla
+--******************</sql><sql name="SQL 2">--*******************
+--recuperamos todos los vuelos a chicago, buscamos el nombre de la ciudad dentro del nombre del aeropuerto
+-- y mostramos el codigo del aeropuesto asi como el nombre
+-- los porcentajes nos sirven para indicarle donde tiene que contener la palabra
+-- si pongo 'CHICAGO%' me ofrece aquellos que empiezan por la palabara
+-- '%CHICAGO' los que acaban por la palabra, '%CHICAGO%' todos los que la contienen
+-- 'CHICAGO' que solo tengan la palabra
+--*******************
+SELECT name, faa FROM airports WHERE name LIKE '%CHICAGO%'</sql><sql name="SQL 3">SELECT COUNT(*) FROM planes WHERE manufacturer == 'AIRBUS' 
+
+--*************
+--Ahora sin que se repitan
+--*************
+
+SELECT DISTINCT manufacturer FROM planes ORDER BY manufacturer
+
+--*************
+--podemos usar like
+--*************
+
+SELECT * FROM planes WHERE manufacturer LIKE '%AIRBUS%'</sql><sql name="SQL 4">--*****************
+--EJERCICIOS
+--*****************
+--A
+SELECT * FROM planes WHERE seats BETWEEN 220 AND 250 --el operador BETWEEN  funciona como &gt;= y &lt;=
+--B
+SELECT * FROM planes WHERE manufacturer LIKE '%AIRBUS%' AND seats &lt; 150
+--C
+--primero identifico todos los cogidos de aeropuerto que se corresponden con chicago, nos da una lista
+-- y luego le decimos que el destino este en esa lista // se puede hacer con JOIN
+SELECT * FROM flights
+WHERE dest IN
+(SELECT faa FROM airports where name LIKE '%CHICAGO%')
+AND arr_delay &gt; 120 AND arr_delay != 'NA'
+
+</sql><sql name="SQL 5">--************
+--DISTINCT sirve para saber las combinaciones unicas
+--************
+SELECT DISTINCT model 
+FROM planes 
+WHERE manufacturer LIKE '%AIRBUS%' AND seats &lt; 150
+
+--************
+--saco el numero de aviones de cada modelo
+--************
+SELECT model, COUNT(*)
+FROM planes
+WHERE manufacturer LIKE '%AIRBUS%' AND seats &lt; 150
+GROUP BY model</sql><sql name="SQL 6">--**************
+--seleccionamos aeropuertos de chicago, luego los vuelos y luego los fabricantes y modelos
+--el DISTINCT cumple la condicion de los dos argumentos, combinaciones unicas
+--**************
+SELECT DISTINCT manufacturer, model
+FROM planes WHERE tailnum IN
+(SELECT DISTINCT tailnum FROM flights WHERE dest IN
+(SELECT faa FROM airports WHERE name LIKE '%CHICAGO%'))
+ORDER BY manufacturer, model</sql><sql name="SQL 7">--**************
+--CASE CLAUSE
+--**************
+SELECT
+carrier || '-' || flight AS flight, dest AS destination, dep_time AS schedule, 
+CASE 
+	WHEN dep_delay = 'NA' THEN '--NA--'
+	WHEN dep_delay &lt; 0 THEN 'IN ADVANCE'
+	WHEN dep_delay = 0 THEN 'ON TIME'
+	WHEN dep_delay &gt; 0 THEN 'DELAYED'
+END AS STATUS
+FROM flights
+WHERE year = 2017 AND month = 12 AND day = 23 </sql><sql name="SQL 8">--***********
+--quiero recuperar los aviones categorizandolos en funcion de las plazas, &lt;=50, 51-150, &gt;=151
+--***********
+SELECT 
+model AS modelo, seats AS asientos,
+CASE
+	WHEN seats &lt;= 50 THEN 'A'
+	WHEN seats BETWEEN 51 AND 150 THEN 'B'
+	ELSE 'C'
+END AS 'categoria'
+FROM planes</sql><current_tab id="7"/></tab_sql></sqlb_project>

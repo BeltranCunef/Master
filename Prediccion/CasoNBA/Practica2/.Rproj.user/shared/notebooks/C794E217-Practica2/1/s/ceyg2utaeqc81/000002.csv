@@ -1,0 +1,4 @@
+"0","set.seed(123)"
+"0","NBA_split <- initial_split(mData, prop = .7, strata = ""Salary"")"
+"0","NBA_train <- training(NBA_split)"
+"0","NBA_test  <- testing(NBA_split)"

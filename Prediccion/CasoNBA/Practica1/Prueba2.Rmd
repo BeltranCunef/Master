@@ -1,0 +1,215 @@
+---
+title: "Prueba2"
+author: "Beltran"
+date: "9/10/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Cargo las librerías necesarias en un primer momento
+```{r}
+library(tidyverse)
+library(dplyr)
+```
+#Lectura del fichero nba.csv
+```{r}
+mData=read.csv("nba.csv")
+```
+Observo la información acerca de las variables contenidas en el dataset
+```{r}
+summary(mData)
+```
+Elimino los valores NA
+```{r}
+mData <- na.omit(mData)
+```
+#Establecimiento de la regresión
+```{r}
+regres01=lm(Salary~NBA_DraftNumber+log(Age)+Tm+G+MP+PER+TS.+ORB.+DRB.+AST.+STL.+BLK.+TOV.+USG.+OWS
+            +DWS+OBPM+DBPM+VORP, data = mData)
+summary(regres01)
+```
+En la regresion asumo que la edad sigue una funcion logarítmica,llegado un momento, tener más años no contribuye a un mayor salario.La variable de conversión de tiro incluye datos acerca de la conversión de tiros de 2, de 3 y tiros libres. Por tanto,esta ya incluye información acerca de las 3 ya mencionadas. Sin embargo, los rebotes en vez de meter el porcentaje correspondiente al total, añado la variable de porcentaje de los defensivos y los ofensivos por separado. Se tiene en cuenta también el porcentaje de asistencias, robos, bloqueos y pérdidas de balón. En el modelo se tienen en cuenta también como variables la contribución ofensiva y defensiva del jugador a las victorias del equipo.
+#Normalidad
+##qqplot
+```{r}
+library(car)
+qqPlot(regres01, labels=row.names(mData), id.method="identify",
+       simulate=TRUE, main="Q-Q Plot")
+```
+Comprobamos si la distribución de la muestra se asemeja a una normal.
+##Histograma+densidad+normal+rug
+```{r}
+residplot <- function(fit, nbreaks=10) {
+  z <- rstudent(fit)
+  hist(z, breaks=nbreaks, freq=FALSE,
+       xlab="Studentized Residual",
+       main="Distribution of Errors")
+  rug(jitter(z), col="brown")
+  curve(dnorm(x, mean=mean(z), sd=sd(z)),
+        add=TRUE, col="blue", lwd=2)
+  lines(density(z)$x, density(z)$y,
+        col="red", lwd=2, lty=2)
+  legend("topright",
+         legend = c( "Normal Curve", "Kernel Density Curve"),
+         lty=1:2, col=c("blue","red"), cex=.7)
+}
+residplot(regres01)
+```
+Represento gráficamente la distribución de los errores.
+Para comprobar la normalidad de la distribución realizaré los contrastes de Jaque-Bera y Shapiro-Wilk.
+#Jarque Bera
+```{r}
+vResid=resid(regres01)
+library(fBasics)
+```
+```{r}
+jbTest(vResid)
+```
+Dada la muestra y el p-value obtenido, con un nivel de significancia del 5% se procede a rechazar la hipótesis nula, por tanto se asume la no normalidad de la muestra.
+#Shapiro-Wilk
+```{r}
+shapiro.test(vResid)
+```
+De nuevo, con los datos de la muestra y el p-value obtenido, a un nivel de significancia del 5% se procede a rechazar la hipótesis nula y asumir la no normalidad de la distribución.
+#Linealidad
+```{r}
+crPlots(regres01)
+```
+#Homocedasticidad
+Llevo a cabo el contraste de Breusch-Pagan para combrobar si el modelo es homocedástico o heterocedástico.
+```{r}
+ncvTest(regres01)
+```
+Con los datos de la muestra y el p-valor obtenido, para un nivel de significatividad del 5% se rechaza la hipótesis nula, el modelo es heterocedástico.
+```{r}
+library(car)
+spreadLevelPlot(regres01)
+```
+#Validación global
+Cabe la posibilidad de llevar a cabo todos los contrastes de hipótesis a la vez, mediante el test de Peña.
+```{r}
+library(gvlma)
+gvmodel <- gvlma(regres01) 
+summary(gvmodel)
+```
+#Multicolinealidad
+```{r}
+vif(regres01) 
+```
+Para valores de la raíz superiores a 2 se detecta un problema de multicolinealidad en las variables, se deben retirar estas del modelo una a una y repetir la prueba de multicolinealidad.
+
+Elimino PER en primer lugar, establezco la nueva regresión y compruebo la multicolinealidad de nuevo.
+```{r}
+regres01=lm(Salary~NBA_DraftNumber+log(Age)+Tm+G+MP+TS.+ORB.+DRB.+AST.+STL.+BLK.+TOV.+USG.+OWS
+            +DWS+OBPM+DBPM+VORP, data = mData)
+vif(regres01)
+```
+Elimino MP en segundo lugar, establezco la nueva regresión y compruebo la multicolinealidad de nuevo.
+```{r}
+regres01=lm(Salary~NBA_DraftNumber+log(Age)+Tm+G+TS.+ORB.+DRB.+AST.+STL.+BLK.+TOV.+USG.+OWS
+            +DWS+OBPM+DBPM+VORP, data = mData)
+vif(regres01)
+```
+Elimino VORP en tercer lugar, establezco la nueva regresión y compruebo la multicolinealidad de nuevo.
+```{r}
+regres01=lm(Salary~NBA_DraftNumber+log(Age)+Tm+G+TS.+ORB.+DRB.+AST.+STL.+BLK.+TOV.+USG.+OWS
+            +DWS+OBPM+DBPM, data = mData)
+vif(regres01)
+```
+#Observaciones anómalas
+```{r}
+outlierTest(regres01)
+```
+Represento los valores extremos.
+```{r}
+hat.plot <- function(fit) {
+  p <- length(coefficients(fit))
+  n <- length(fitted(fit))
+  plot(hatvalues(fit), main="Index Plot of Hat Values")
+  abline(h=c(2,3)*p/n, col="red", lty=2)
+  identify(1:n, hatvalues(fit), names(hatvalues(fit)))
+}
+hat.plot(regres01)
+```
+Llevo a cabo el cálculo de la distancia de Cook.
+```{r}
+cutoff <- 4/(nrow(mData)-length(regres01$coefficients)-2)
+plot(regres01, which=4, cook.levels=cutoff)
+abline(h=cutoff, lty=2, col="red")
+```
+```{r}
+avPlots(regres01, ask=FALSE, id.method="identify")
+```
+```{r}
+influencePlot(regres01, id.method="identify", main="Influence Plot", 
+              sub="Circle size is proportial to Cook's Distance" )
+```
+Elimino los valores influyentes
+```{r}
+mData <- mData[c(-328,-114,-189,-143)]
+```
+Vuelvo a hacer la regresión sin los valores influyentes
+```{r}
+regres01=lm(Salary~NBA_DraftNumber+log(Age)+Tm+G+TS.+ORB.+DRB.+AST.+STL.+BLK.+TOV.+USG.+OWS
+            +DWS+OBPM+DBPM, data = mData)
+summary(regres01)
+```
+
+#Selección de variables
+```{r}
+regres01=lm(Salary~NBA_DraftNumber+log(Age)+Tm+G+MP+PER+TS.+ORB.+DRB.+AST.+STL.+BLK.+TOV.+USG.+OWS
+            +DWS+OBPM+DBPM+VORP, data = mData)
+regres02=lm(Salary~NBA_DraftNumber+log(Age)+Tm+G+TS.+ORB.+DRB.+AST.+STL.+BLK.+TOV.+USG.+OWS
+            +DWS+OBPM+DBPM, data = mData)
+anova(regres02, regres01)
+```
+```{r}
+AIC(regres01,regres02)
+```
+```{r}
+BIC(regres01,regres02)
+```
+Me debo de quedar con el modelo con menor AIC o menor BIC, por tanto al final escojo la primera regresion
+```{r}
+library(leaps)
+library(MASS)
+```
+```{r}
+stepAIC(regres01, direction = "both")
+```
+Una vez llevada a cabo la selección de variables, determino que el mejor modelo es el siguiente:
+```{r}
+regres02 = lm(Salary~NBA_DraftNumber+log(Age)+G+MP+DRB.+OWS
+            +VORP, data = mData)
+summary(regres02)
+```
+
+#Cross Validation
+##Validation Test
+
+```{r}
+library(ISLR)
+set.seed(250)
+numData=nrow(mData)
+train=sample(numData ,numData/2)
+
+regres.train =lm(Salary~NBA_DraftNumber+log(Age)+G+MP+DRB.+OWS
+            +VORP,mData ,subset =train )
+attach(mData)
+mean((Salary-predict(regres.train ,Auto))[-train ]^2)
+```
+```{r}
+glm.fit1=glm(Salary~NBA_DraftNumber+log(Age)+G+MP+DRB.+OWS
+            +VORP,mData,family = gaussian())
+coef(glm.fit1)
+```
+```{r}
+library(boot)
+```
+```{r}
+cv.err =cv.glm(mData,glm.fit1)
+cv.err$delta
+```

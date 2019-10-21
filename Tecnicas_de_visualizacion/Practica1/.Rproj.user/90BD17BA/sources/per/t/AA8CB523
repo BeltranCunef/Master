@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1571493515381.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "949063681",
+    "id" : "AA8CB523",
+    "lastKnownWriteTime" : 1571491426,
+    "last_content_update" : 1571491426,
+    "path" : "~/Tecnicas de visualizacion/Ejercicio1ggplot/apartado3.R",
+    "project_path" : "apartado3.R",
+    "properties" : {
+        "cursorPosition" : "10,0",
+        "scrollLine" : "0",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

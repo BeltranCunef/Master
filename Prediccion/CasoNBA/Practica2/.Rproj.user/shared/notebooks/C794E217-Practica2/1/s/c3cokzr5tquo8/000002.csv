@@ -1,0 +1,1 @@
+"0","mDataAux <- select(mData,Salary,VORP,OWS,WS,Age,NBA_DraftNumber,AST.,USG.,BPM,OBPM,PER,DWS,G,MP)"
