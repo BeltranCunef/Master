@@ -1,0 +1,211 @@
+---
+title: "GAMBikes"
+author: "Beltran"
+date: "22/10/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# TO DO LIST
+  * READ DATA
+  * SUMMARISE DATA
+  * GAM
+  
+
+# LIBRARIES & SEED
+```{r LIBRARIES, results='hide', warning=FALSE}
+library(dplyr)
+library(knitr)
+library(ISLR)
+library(boot)
+library(splines)
+library(ggplot2)
+library(gam)
+library(skimr)
+library(car)
+library(corrplot)
+``` 
+
+```{r SEED}
+set.seed(123)
+```
+
+# ANALISIS EXPLORATORIO
+
+## READ DATA
+```{r READ DATA}
+bikes <- read.csv("day.csv")
+```
+
+## SUMMARISE DATA
+
+Comprobamos la distribución de las variables a través de la representación de su histrograma. También observo estadísticos tales como los cuartiles, media, mediana y desviación típica.
+
+```{r SUMMARISE DATA}
+skim(bikes)
+```
+
+Observo que disponemos de un data set con 731 observaciones correpsondientes a 16 variables. No existen valores omitidos en ninguna de las variables. La variable 'instant' muestra únicamente el índice de cada uno de los registros, por tanto, es redundante ya que R de por sí ya indeza los registros. Procedo a eliminarla.
+
+```{r DELETING INSTANT}
+bikes <- select(bikes, -instant)
+```
+
+Ahora el data set presenta un total de 15 variables. 
+
+```{r CORRPLOT}
+corrplot(round(cor(bikes %>% select_at(vars(-dteday))), 1), method = "number", type = "upper", 
+         tl.cex = 0.85, tl.srt = 45)
+```
+
+Se comprueba que las variables "casual" y "registered" presentan una alta correlación con la variable "cnt", esto se debo a que ambas forman parte de la última puesto que "cnt" resulta de la suma de "casual" y "registered". Para el posterior análisis no se tendrán en cuenta ninguna de las dos, ni "casual", ni "registered".
+
+# PREDICTION
+
+## MULTIPLE PREDICTORS: GAM
+
+### DOF
+
+Calculo los grados de libertad de casa una de las variables numéricas. Estos serán los grados de libertad óptimos. El cálculo se realiza mediante cross-validation.
+
+```{r DOF, warning=FALSE}
+
+DOFtemp <- smooth.spline(bikes$temp, bikes$cnt, cv = TRUE) #DOF of temp
+DOFatemp <- smooth.spline(bikes$atemp, bikes$cnt, cv = TRUE) #DOF of atemp
+DOFhum <- smooth.spline(bikes$hum, bikes$cnt, cv = TRUE) #DOF of hum
+DOFwindspeed <- smooth.spline(bikes$windspeed, bikes$cnt, cv = TRUE) #DOF of windspeed
+
+DOFtemp; DOFatemp; DOFhum; DOFwindspeed
+```
+
+### PLOTTING
+
+```{r TEMP}
+ggplot(data = bikes, aes(x = cnt, y = temp)) + geom_point(color = 'gray') +
+    geom_smooth(method = 'loess', span = 0.2) +
+    geom_smooth(method = 'loess', span = 0.5, color = 'red') +
+    theme_bw()
+```
+
+```{r ATEMP}
+ggplot(data = bikes, aes(x = cnt, y = atemp)) + geom_point(color = 'gray') +
+    geom_smooth(method = 'loess', span = 0.2) +
+    geom_smooth(method = 'loess', span = 0.5, color = 'red') +
+    theme_bw()
+```
+
+```{r HUM}
+ggplot(data = bikes, aes(x = cnt, y = hum)) + geom_point(color = 'gray') +
+    geom_smooth(method = 'loess', span = 0.2) +
+    geom_smooth(method = 'loess', span = 0.5, color = 'red') +
+    theme_bw()
+```
+
+```{r WINDSPEED}
+ggplot(data = bikes, aes(x = cnt, y = windspeed)) + geom_point(color = 'gray') +
+    geom_smooth(method = 'loess', span = 0.2) +
+    geom_smooth(method = 'loess', span = 0.5, color = 'red') +
+    theme_bw()
+```
+
+### MAKING MODELS
+
+En primer lugar paso a tipo factor las variables categóricas no dummies. 
+
+```{r TO FACTOR}
+bikes$season <- as.factor(bikes$season)
+bikes$mnth <- as.factor(bikes$mnth)
+bikes$weekday <- as.factor(bikes$weekday)
+bikes$weathersit <- as.factor(bikes$weathersit)
+```
+
+```{r TRAINING Y TEST}
+train <- sample(nrow(bikes), 0.7*nrow(bikes))
+
+bikes_train <- bikes[train,] # muestra de entrenamiento
+
+bikes_test <- bikes[-train,] # muestra de test
+```
+
+Divido la muestra en train y test. Calculo cada uno de los modelos sobre el train. Realizo la predicción sobre el test, calculo el error medio y aquel modelo con menor error medio es el que pondré a prueba sobre la población total.
+
+```{r MODELOGAM1}
+
+# En este modelo incluyo únicamente las variables cuantitativas
+
+modeloGam1 <- gam(cnt ~ s(atemp, df = 8.805497) + s(hum, df = 8.805497) + 
+                    s(temp, df = 9.103704) + s(windspeed, df = 6.007664), data = bikes_train)
+plot(modeloGam1, se = TRUE, col = "red")
+```
+
+El primer modelo únicamente es elaborado incluyendo las variables cuantitativas de la muestra, excluyo toda variable categórica y/o dummie.
+
+```{r SUMMARY MODELOGAM1}
+summary(modeloGam1)
+```
+
+El p-value obtenido para la función del predictor "windspeed" (0.4726) no muestra evidencias de que la relación entre cnt y windspeed no sea lineal, lo que lleva a preguntarse si sería mejor emplear un ajuste lineal en lugar de una smooth spline, reduciendo así la complejidad del modelo.
+
+A continuación procedo a realizar la predicción del modelo sobre la parte test de la muestra.
+
+```{r PREDICT MODELOGAM1}
+prediccion_modeloGam1 <- predict(modeloGam1, bikes_test)
+error_modeloGam1 <- mean((prediccion_modeloGam1 - bikes_test$cnt)^2)
+error_modeloGam1
+```
+
+El error medio sobre el test de este primer modelo es de ± 1276,559 bicicletas, es decir, ± 1277 bicicletas aproximadamente.
+
+```{r ERROR MODELOGAM1}
+sqrt(error_modeloGam1)
+```
+
+```{r MODELOGAM2, results='hide'}
+
+# En este modelo incluyo las variables cuantitativas y las categoricas
+
+modeloGam2 <- gam(cnt ~ s(atemp, df = 8.805497) + s(hum, df = 8.805497) + s(temp, df = 9.103704) + 
+                  s(windspeed, df = 6.007664) + season + yr + mnth + holiday + weekday + 
+                  workingday + weathersit, data = bikes_train)
+
+plot(modeloGam2, se = TRUE, col = "blue")
+```
+
+El segundo modelo incorpora todas las variables del DataSet a excepción de "dteday".
+
+```{r SUMMARY MODELOGAM2}
+summary(modeloGam2)
+```
+
+```{r PREDICT MODELOGAM2, warning=FALSE}
+prediccion_modeloGam2 <- predict(modeloGam2, bikes_test)
+error_modeloGam2 <- mean((prediccion_modeloGam2 - bikes_test$cnt)^2)
+error_modeloGam2
+```
+
+El error medio sobre el test de este segundo modelo es de ± 707,88 bicicletas, es decir, ± 708 bicicletas aproximadamente.
+
+```{r ERROR MODELOGAM2}
+sqrt(error_modeloGam2)
+```
+
+El segundo modelo presenta un error menor. Es por ello que procedo a predecir sobre toda la muestra y calcular el error total.
+
+```{r TOTAL, warning=FALSE}
+prediccionTotal <- predict(modeloGam2, bikes)
+errorTotal <- mean((prediccionTotal - bikes$cnt)^2)
+sqrt(errorTotal)
+```
+
+El error medio sobre la población del modelo finalmente elegigo es de ± 628,47 bicicletas, lo que significa que se equivoca por término medio en ± 629 bicicletas.
+
+```{r PLOTTING RESULTS}
+modelos <- c('Modelo Gam 1', 'Modelo Gam 2')
+error <- c(sqrt(error_modeloGam1), sqrt(error_modeloGam2))
+df <- data.frame(modelos, error)
+ggplot(df, aes( x = modelos, y = error)) + geom_col()
+```
+
+El segundo modelo presenta un error un 45% menor que el primer modelo en comparación.
