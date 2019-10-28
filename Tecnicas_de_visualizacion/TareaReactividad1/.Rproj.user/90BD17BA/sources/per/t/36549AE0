@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1572259537049.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1480359198",
+    "id" : "36549AE0",
+    "lastKnownWriteTime" : 1572261218,
+    "last_content_update" : 1572261218990,
+    "path" : "~/Tecnicas de visualizacion/TareaReactividad1/ui.R",
+    "project_path" : "ui.R",
+    "properties" : {
+        "cursorPosition" : "20,4",
+        "scrollLine" : "12",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
