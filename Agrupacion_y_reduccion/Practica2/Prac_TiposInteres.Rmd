@@ -1,0 +1,189 @@
+---
+title: "Practica Tipos de Interes"
+author: "Beltran"
+date: "25/10/2019"
+output: pdf_document
+---
+
+# TO DO
+  
+  * READ DATA
+  * SPLIT DATA
+  * SUMMARISE DATA
+  * ANALISIS EXPLORATORIO
+  * ACP
+  * ROTACION DE COMPONENTES
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# LIBRARIES & SEED
+
+```{r LIBRARIES}
+library(FactoMineR)
+library(factoextra)
+library(skimr)
+library(ggplot2)
+library(dplyr)
+library(corrplot)
+library(psych)
+```
+
+```{r SEED}
+set.seed(123)
+```
+
+# READ DATA
+
+```{r READING DATA}
+TIUSD <- read.csv("ACPTIUSD.csv", sep = ";")
+TIUSD <- select(TIUSD, -X)
+```
+
+# SPLIT DATA
+
+```{r SPLITTING DATA}
+observacionesActivas <- TIUSD[1:949, 1:9]
+observacionesSuplementarias <- TIUSD[950:978, 1:9]
+```
+
+# ANALISIS EXPLORATORIO
+
+```{r SUMMARISE DATA}
+skim(observacionesActivas)
+```
+
+El dataset está formado por 949 observaciones correspondientes a 9 variables. Para la variable DEPO.1M se registran un total de 166 Na´s. Procedemos a eliminarlos.
+
+```{r DELETTING NA}
+observacionesActivas <- na.omit(observacionesActivas)
+observacionesSuplementarias <- na.omit(observacionesSuplementarias)
+```
+
+## HISTOGRAMAS Y CURVAS DE DENSIDAD
+
+```{r DEPOSITO A 1 MES}
+hist(observacionesActivas$DEPO.1M, breaks = 12, 
+     prob = TRUE, xlab = "Depósito a 1 mes", main = "Histogram & Density Curve") 
+     curve(dnorm(x, mean = mean(observacionesActivas$DEPO.1M), sd = sqrt(var(observacionesActivas$DEPO.1M))),
+           add = TRUE, col = 'red')
+```
+
+```{r DEPOSITO A 3 MESES}
+hist(observacionesActivas$DEPO.3M, breaks = 12, 
+     prob = TRUE, xlab = "Depósito a 3 meses", main = "Histogram & Density Curve") 
+     curve(dnorm(x, mean = mean(observacionesActivas$DEPO.3M), sd = sqrt(var(observacionesActivas$DEPO.3M))),
+           add = TRUE, col = 'red')
+```
+
+```{r DEPOSITO A 6 MESES}
+hist(observacionesActivas$DEPO.6M, breaks = 12, 
+     prob = TRUE, xlab = "Depósito a 6 meses", main = "Histogram & Density Curve") 
+     curve(dnorm(x, mean = mean(observacionesActivas$DEPO.6M), sd = sqrt(var(observacionesActivas$DEPO.6M))),
+           add = TRUE, col = 'red')
+```
+
+```{r DEPOSITO A 12 MESES}
+hist(observacionesActivas$DEPO.12M, breaks = 12, 
+     prob = TRUE, xlab = "Depósito a 12 meses", main = "Histogram & Density Curve") 
+     curve(dnorm(x, mean = mean(observacionesActivas$DEPO.12M), sd = sqrt(var(observacionesActivas$DEPO.12M))),
+           add = TRUE, col = 'red')
+```
+
+```{r INTERES A 2 ANNOS}
+hist(observacionesActivas$IRS.2Y, breaks = 12, 
+     prob = TRUE, xlab = "Interés a 2 años", main = "Histogram & Density Curve") 
+     curve(dnorm(x, mean = mean(observacionesActivas$IRS.2Y), sd = sqrt(var(observacionesActivas$IRS.2Y))),
+           add = TRUE, col = 'red')
+```
+
+```{r INTERES A 3 ANNOS}
+hist(observacionesActivas$IRS.3Y, breaks = 12, 
+     prob = TRUE, xlab = "Interés a 3 años", main = "Histogram & Density Curve") 
+     curve(dnorm(x, mean = mean(observacionesActivas$IRS.3Y), sd = sqrt(var(observacionesActivas$IRS.3Y))),
+           add = TRUE, col = 'red')
+```
+
+```{r INTERES A 4 ANNOS}
+hist(observacionesActivas$IRS.4Y, breaks = 12, 
+     prob = TRUE, xlab = "Interés a 4 años", main = "Histogram & Density Curve") 
+     curve(dnorm(x, mean = mean(observacionesActivas$IRS.4Y), sd = sqrt(var(observacionesActivas$IRS.4Y))),
+           add = TRUE, col = 'red')
+```
+
+```{r INTERES A 5 ANNOS}
+hist(observacionesActivas$IRS.5Y, breaks = 12, 
+     prob = TRUE, xlab = "Interés a 5 años", main = "Histogram & Density Curve") 
+     curve(dnorm(x, mean = mean(observacionesActivas$IRS.5Y), sd = sqrt(var(observacionesActivas$IRS.5Y))),
+           add = TRUE, col = 'red')
+```
+
+```{r INTERES A 7 ANNOS}
+hist(observacionesActivas$IRS.7Y, breaks = 12, 
+     prob = TRUE, xlab = "Interés a 7 años", main = "Histogram & Density Curve") 
+     curve(dnorm(x, mean = mean(observacionesActivas$IRS.7Y), sd = sqrt(var(observacionesActivas$IRS.7Y))),
+           add = TRUE, col = 'red')
+```
+
+Observando los histrogramas de las variables, algunas de ellas parecen seguir una distribución Normal, aún así, tampoco es necesariamente obligatorio que las variables sigan una distribución Normal para la realización del ACP y el Análisis Factorial.
+
+## ANALISIS DE LA MATRIZ DE CORRELACIONES
+
+```{r MATRIZ DE CORRELACIONES}
+corrplot(cor(observacionesActivas),method = 'number', type = 'upper' )
+```
+
+```{r DETERMINANTE MATRIZ}
+det(cor(observacionesActivas))
+```
+
+Un determinante bajo, es decir, cercano a 0, indica alta multicolinealidad entre las variables. De ser igual a cero (matriz no singular), esto indicaría que algunas de las variables son linealmente dependientes y no se podrían realizar ciertos cálculos necesarios para los procedimientos multivariados. En este caso observamos que es muy cercano a 0, lo que sugiere un alto nivel de colinealidad en el conjunto de variables involucradas en la matriz.
+
+```{r PRUEBA DE ESFERICIDAD DE BARTLETT}
+bartlett.test(observacionesActivas)
+```
+
+```{r KMO}
+KMO(observacionesActivas)
+```
+
+A la vista de los resultados obtenidos mediante la matriz de correlaciones, el test de Bartlett y la pruba KMO; el conjunto de datos o data set es muy adecuado para la realización de un análisis de componentes principales. Existe un alto grado de multicolinealidad entre las variables, la prueba de Bartlett proporciona una muy baja, prácticamente nula, probabilidad de que la matriz de correlaciones sea la matriz identidad; y, la prueba KMO extrae un índice superior a 0.8 en general para todas las variables.
+
+# ACP
+
+```{r ACP & MAPS}
+analisis <- PCA(observacionesActivas, graph = TRUE)
+analisis
+```
+
+Observando tanto al mapa factorial de las variables, como al mapa factorial individual de cada observación; se obtienen 2 dimensiones o factores que en conjunto explican aproximadamente 99% de la información del data set. Es decir, reduciendo la dimensión de 9 variables a 2 componentes, perdemos únicamente un 1% de la información total recogida en las 9 variables originales.
+
+```{r AUTOVALORES}
+analisis$eig
+```
+
+Analizando los autovalores y el porcentaje de varianza explicada por cada uno de los componentes, se observa que a partir del segundo componente, el porcentaje de varianza explicada se incrementa cada vez menos. Podemos preguntarnos a partir de qué número de componentes, el añadir uno más vale la pena teniendo en cuenta el incremento del porcentaje de varianza explicada. Responderé a través del análisis del gráfico de segmentación y la regla "del codo".
+
+## GRAFICO DE SEGMENTACION
+
+```{r SCREE PLOT}
+fviz_eig(analisis, addlabels = TRUE, hjust = -0.3) +
+        labs(title = "Scree plot / Gráfico de sedimentación", x = "Dimensiones", y = "% Varianza explicada") +
+        theme_minimal()
+```
+
+A partir de 2 componentes, la aportación de los siguentes es mínima y no significativa. Atendiendo al principio de parsimoniA decido quedarme únicamente con 2 componentes. Estos en conjunto explican ya alrededor del 99% de la varianza.
+
+# ROTACION DE COMPONENTES SUBYACENTES
+
+```{r VARIMAX}
+rotacion <- varimax(analisis$var$cor)
+rotacion
+```
+
+Si comparamos el porcentaje de varianza explicada por cada una de las dimensiones, en primer lugar con el análisis de componentes principales, y en segundo lugar con la matriz de componentes rotada; se observa que la aplicación del método varimax atribuye un menor porcentaje de varianza explicada al primer factor en comparación con el ACP. A su vez, incrementa el porcentaje de varianza explicada del segundo factor. En este caso, independientemente de estas diferencias, la conclusión es la misma, la reducción ideal es de 9 variables originales a 2 únicos componentes, los cuales explican aproximadamente el 99% de la varianza. Lo que no cambia entre ACP y varimax es el porcentaje acumulado de varianza explicada por los 2 componentes. 
+
+También es reseñable que el método varimax se usa para facilitar la interpretación de los resultados obtenidos. En este caso no es necesario, puesto que la interpretación de los componentes, así como la relación de estos con cada una de las variables, se puede obtener analizando tanto las comunalidades, como las correlaciones de cada variable con los componentes.
+
+Por último, es inviable llevar a cabo una predicción del tipo de interés a 10 años a partir de las observaciones suplementarias debido a la omisión de datos presentes en el data set.
