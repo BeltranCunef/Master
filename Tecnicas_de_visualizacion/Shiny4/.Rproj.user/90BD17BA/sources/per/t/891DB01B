@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1572461684573.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "123105357",
+    "id" : "891DB01B",
+    "lastKnownWriteTime" : 1572464061,
+    "last_content_update" : 1572464061352,
+    "path" : "~/Tecnicas de visualizacion/Shiny4/app2.R",
+    "project_path" : "app2.R",
+    "properties" : {
+        "cursorPosition" : "54,21",
+        "scrollLine" : "43",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
