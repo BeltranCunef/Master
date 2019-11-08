@@ -1,0 +1,212 @@
+---
+title: "Assignment"
+author: "Beltran Aller Lopez"
+date: "1/11/2019"
+output: 
+  html_document:
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# LIBRARIES & SEED
+
+```{r}
+library("gradDescent")
+library(ggplot2)
+set.seed(123)
+```
+
+# FUNCTIONS
+
+In this chapter I write the functions that I will use to solve the exercises.
+
+## SIGMOID
+
+```{r SIGMOID}
+Sigmoid <- function(x) { 
+  1 / (1 + exp(-x))
+}
+
+# feed with data
+x <- seq(-5, 5, 0.01)
+
+# and plot
+plot(x, Sigmoid(x), col = 'blue', ylim = c(-.2, 1))
+abline(h = 0, v = 0, col = "gray60")
+```
+
+## COST FUNCTION
+
+```{r COST FUNCTION}
+# Ref: https://www.r-bloggers.com/logistic-regression-with-r-step-by-step-implementation-part-2/
+# Cost Function
+# 
+CostFunction <- function(parameters, X, Y) {
+  n <- nrow(X)
+  # function to apply (%*% Matrix multiplication)
+  g <- Sigmoid(X %*% parameters)
+  J <- (1/n) * sum((-Y * log(g)) - ((1 - Y) * log(1 - g)))
+  return(J)
+}
+```
+
+## GRADIENT DESCENT FUNCTION
+
+```{r GRADIENT DESCENT FUNCTION}
+# We want to minimize the cost function. Then derivate this funcion
+TestGradientDescent <- function(iterations = 1200, X, Y) {
+  
+  # Initialize (b, W)
+  parameters <- rep(0, ncol(X))
+  # Check evolution
+  print(paste("Initial Cost Function value: ", 
+              convergence <- c(CostFunction(parameters, X, Y)), sep = ""))
+  
+  # updating (b, W) using gradient update
+  
+  # Derive theta using gradient descent using optim function
+  # Look for information about the "optim" function (there are other options)
+  parameters_optimization <- optim(par = parameters, fn = CostFunction, X = X, Y = Y, 
+                                   control = list(maxit = iterations))
+  #set parameters
+  parameters <- parameters_optimization$par
+  
+  # Check evolution
+  print(paste("Final Cost Function value: ", 
+              convergence <- c(CostFunction(parameters, X, Y)), sep = ""))
+
+ return(parameters) 
+}
+```
+
+# DATA
+
+I'm going tu use the next dataset which includes the scores of two examns made by a group of students, the third column indicates if they were admitted at the university. 1 means YES, 0 means NO.
+
+```{r LOADING AND READING DATA}
+#Load data
+data <- read.csv("data/4_1_data.csv")
+```
+
+# EXERCISE 1
+
+Now I create the dataframe of the predictor variables, which will be the scores of both examns and b.
+
+```{r PREDICTOR AND RESPONSE VARIABLES}
+#Predictor variables
+X <- as.matrix(data[, c(1,2)])
+
+#Add ones to X in the first column (matrix multiplication x b)
+X <- cbind(rep(1, nrow(X)), X)
+
+#Response variable
+Y <- as.matrix(data$label)
+```
+
+The next step will be calculate the parameters using the TestGradientDescent function.
+
+```{r PARAMETERS}
+parameters <- TestGradientDescent(X = X, Y = Y)
+parameters
+```
+
+Now I can predict the possibility of each student of being accepted in the university.
+
+```{r PROBABILITIES OF ALL STUDENTS}
+probabilities_of_all_students <- t(Sigmoid(parameters %*% t(X)))
+```
+
+Having both dataframes, the real results and the predicted results, we can do the confussion matrix and calculate the accuracy rate. In this exercise I put the cut off of the predicted results at 0.85, the accuracy is going to depend on the cut off assigned.
+
+```{r CONFUSSION MATRIX}
+confussion_matrix <- table(data$label, probabilities_of_all_students > 0.85,
+                    dnn = c("Actual", "Predicted"))
+confussion_matrix
+```
+
+```{r ACCURACY}
+print("Accuracy:")
+print(accuracy <- 1 - (confussion_matrix[2,1] + confussion_matrix[1,2])/sum(confussion_matrix))
+```
+
+# EXERCISE 2
+
+```{r LOOP, results='hide'}
+
+# At first I create a dataframe in which I will keep the number of iterations and the value of the          # CostFunction
+iterations <- data.frame("Iterations" = 0, "CostFunctionValue" = 0) 
+
+# Now I do a loop
+for (i in seq(1:125)) {
+  
+  # Here we have the values of the parameters which are calculated using the TestGradientDescent function
+  parameters <- TestGradientDescent(iterations = i, X = X, Y = Y)
+  
+  # The convergence value of each iteration calculated using the CostFuction
+  CostFunctionValue <- CostFunction(parameters, X, Y)
+  
+  # Now I add the values to the dataframe 
+  iterations[i,] <- c(i, CostFunctionValue)
+}
+```
+
+```{r PLOT, message=FALSE}
+ggplot(iterations,aes(x = iterations$Iterations , y = iterations$CostFunctionValue)) + geom_line() + xlab('Iterations') + ylab('CostFunctionValue')
+```
+
+# EXERCISE 3
+
+I will look for some new ways of estimating the Gradient Descent using another methods of optim function. In order to get that, I will make a new function with 4 variables, this function is basically the TestGradientFunction but the fourth variable will be the optim method.
+
+```{r METHODS OPTIM}
+DifferentMethodsOptim <- function(iterations, X, Y, method){
+  # Initialize (b, W)
+  parameters <- rep(0, ncol(X))
+  # Check evolution
+  print(paste("Initial Cost Function value: ", 
+              convergence <- c(CostFunction(parameters, X, Y)), sep = ""))
+  
+  # updating (b, W) using gradient update
+  
+  # Derive theta using gradient descent using optim function
+  # Look for information about the "optim" function (there are other options)
+  parameters_optimization <- optim(par = parameters, fn = CostFunction, X = X, Y = Y, 
+                                   control = list(maxit = iterations), method = method)
+  #set parameters
+  parameters <- parameters_optimization$par
+  
+  # Check evolution
+  print(paste("Final Cost Function value: ", 
+              convergence <- c(CostFunction(parameters, X, Y)), sep = ""))
+
+ return(parameters)
+}
+```
+
+Now I´m going to try this new function.
+
+```{r TRYING BFGS}
+parameters2 <- DifferentMethodsOptim(1000, X, Y, "BFGS")
+parameters2
+```
+
+```{r TRYING CG}
+parameters3 <- DifferentMethodsOptim(1000, X, Y, "CG")
+parameters3
+```
+
+```{r TRYING SANN}
+parameters4 <- DifferentMethodsOptim(1000, X, Y, "SANN")
+parameters4
+```
+
+Method Brent does not run because is only available for one dimensional optimization.
+
+L-BFGS-B gives us an error related with the values of fn.
