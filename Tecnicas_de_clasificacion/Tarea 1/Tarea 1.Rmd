@@ -1,0 +1,400 @@
+
+---
+title: "Tarea 1 Clasificación"
+author: "Beltran Aller Lopez"
+date: "10/11/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r LIBRARIES & SEED, warning=FALSE, message=FALSE, results='hide'}
+library(rpart)
+library(rpart.plot)
+library(partykit)
+library(party)
+library(readxl)
+library(fastDummies)
+library(ggplot2)
+library(MASS)
+library(biotools)
+library(car)
+set.seed(1234)
+```
+
+# DATA
+
+```{r READING DATA, echo=FALSE}
+datos <- read_excel("Datos tarea1.xlsx")
+```
+
+Disponemos de un dataframe compuesto por un total de 80 observaciones y 9 variables. Estas son las siguientes:
+
+- TIPO: variables categórica, representa el perfil de riesgo en el cual se encuentra enmarcado el cliente. Puede              adoptar 3 posibles valores, alto riesgo, riesgo medio y bajo riesgo.
+- I: variable numérica, indica la cantidad de ingresos anuales del cliente, está medida en miles de euros.
+- Edad: varibale numérica, edad del cliente en cuestión.
+- Sexo: variable categórica, el cliente se puede tratar de un hombre o una mujer.
+- EC: variable categórica, estado civil del cliente, soltero o casado.
+- H: variable numérica, representa el número de hijos del cliente.
+- P: variable numérica, patrimonio en miles de euros del cliente.
+- R: variable numérica, ratio de endeudamiento del cliente sobre el patrimonio.
+- A: variable categórica,grado de aversión al riesgo del cliente, puede tomar 3 posibles valores, alto, medio y bajo.
+
+En la siguiente tabla se muestra un resumen de las características más relevantes de cada variable.
+
+```{r VIEW & SUMMARY,echo=FALSE}
+View(datos)
+summary(datos)
+```
+
+# ANALISIS DESCRIPTIVO
+
+Acorde a la información visualizada en el dataset, de cara a realizar un análisis discriminante procedo a eliminar las variables categóricas. Por tanto eliminaré el sexo, el estado civil y el grado de aversión al riesgo.
+
+```{r DUMMIES, echo=FALSE}
+datos <- dummy_columns(datos, select_columns = c("Sexo", "EC", "A"))
+datos$Sexo_HOMBRE <- as.factor(datos$Sexo_HOMBRE)
+datos$Sexo_MUJER <- as.factor(datos$Sexo_MUJER)
+datos$EC_SOLTERO <- as.factor(datos$EC_SOLTERO)
+datos$EC_CASADO <- as.factor(datos$EC_CASADO)
+datos$A_BAJO <- as.factor(datos$A_BAJO)
+datos$A_MEDIO <- as.factor(datos$A_MEDIO)
+datos$A_ALTO <- as.factor(datos$A_ALTO)
+```
+
+```{r DELETTING SEXO, EC & A, echo=FALSE}
+datos <- dplyr::select(datos, -Sexo, -EC, -A)
+```
+
+Divido la muestra en función del riesgo de cada una de las observaciones, por tanto genero 3 dataframes distintos, cada uno correspondiente a un perfil de riesgo distinto. Llevaré a cabo un análisis sobre cada una de las variables asociadas a los distintos tipos de riesgo.
+
+```{r SPLITTING, echo=FALSE}
+riesgo_Alto <- subset(datos, datos$TIPO == "Alto riesgo") 
+riesgo_Alto <- dplyr::select(riesgo_Alto, -c("TIPO"))
+
+riesgo_Medio <- subset(datos, datos$TIPO == "Riesgo medio") 
+riesgo_Medio <- dplyr::select(riesgo_Medio, -c("TIPO"))
+
+riesgo_Bajo <- subset(datos, datos$TIPO == "Bajo riesgo") 
+riesgo_Bajo <- dplyr::select(riesgo_Bajo, -c("TIPO"))
+```
+
+## CONDICIONES DEL ANALISIS DISCRIMINANTE
+
+- Cada predictor que forma parte del modelo se distribuye de forma normal en cada una de las clases de la               variable respuesta. En el caso de múltiples predictores, las observaciones siguen una distribución normal             multivariante en todas las clases.
+- La varianza del predictor es igual en todas las clases de la variable respuesta. En el caso de múltiples              predictores, la matriz de covarianza es igual en todas las clases. Si esto no se cumple se recurre a Análisis          Discriminante Cuadrático (QDA).
+
+## RIESGO ALTO
+
+Del conjunto de las 80 observaciones correspondientes al dataset original, 28 responden a un perfil de riesgo alto. A continuación muestro las medidas más relevantes de las variables de estas 28 observaciones.
+
+```{r SUMMARY RIESGO ALTO, echo=FALSE}
+summary(riesgo_Alto)
+```
+
+De acuerdo a la información de la tabla, los clientes que presentan un perfil de riesgo alto son generalmente de mediana edad, unos 30 años; con unos ingresos que oscilan entre 14.000 y 16.000 euros anuales por término medio. En su mayoría están solteros y aquellos que tienen hijos, suele ser sólo uno; presentan un ratio de endeudamiento sobre el patrimonio de aproximadamente el 50% y una baja aversión al riesgo.
+
+A continuación compruebo la distribución de las variables numéricas asociadas a cada una de las clases de perfil de riesgo. 
+
+```{r SCATTERPLOT RIESGO ALTO, echo=FALSE, warning=FALSE}
+scatterplotMatrix(riesgo_Alto[1:5])
+```
+
+De los gráficos no se extrae de forma definida si las variables siguen una distribución normal, por ello procedo a realizar el test de normalidad de Shapiro-Wilk.
+
+```{r SHAPIRO-WILK RIESGO ALTO, echo=FALSE}
+shapiro.test(riesgo_Alto$I)
+shapiro.test(riesgo_Alto$Edad)
+shapiro.test(riesgo_Alto$H)
+shapiro.test(riesgo_Alto$P)
+shapiro.test(riesgo_Alto$R)
+```
+
+Para un nivel de significación del 5%, se comprueba que a excepción de la edad y el número de hijos, el resto de variables siguen una distribución normal.
+
+## RIESGO MEDIO
+
+Del conjunto de las 80 observaciones correspondientes al dataset original, 27 responden a un perfil de riesgo medio. A continuación muestro las medidas más relevantes de las variables de estas 27 observaciones.
+
+```{r SUMMARY RIESGO MEDIO, echo=FALSE}
+summary(riesgo_Medio)
+```
+
+De acuerdo a la información de la tabla, los clientes que presentan un perfil de riesgo medio también son de mediana edad, unos 30 años; con unos ingresos que oscilan entre 18.000 y 20.000 euros anuales por término medio. Algo más de la mitad están casados y no suelen tener hijos; presentan un ratio de endeudamiento sobre el patrimonio de alrededor del 50% de este y una aversión al riesgo media.
+
+Al igual que con el perfil de riesgo alto, con el medio compruebo la distribución de las variables.
+
+```{r SCATTERPLOT RIESGO MEDIO, echo=FALSE, warning=FALSE}
+scatterplotMatrix(riesgo_Medio[1:5])
+```
+
+Para asegurarme de si siguen una distribución normal las variables, llevo a cabo el test de Shapiro-Wilk.
+
+```{r SHAPIRO-WILK RIESGO MEDIO, echo=FALSE}
+shapiro.test(riesgo_Medio$I)
+shapiro.test(riesgo_Medio$Edad)
+shapiro.test(riesgo_Medio$H)
+shapiro.test(riesgo_Medio$P)
+shapiro.test(riesgo_Medio$R)
+```
+
+A excepción el número de hijos y los ingresos anuales, el resto de variables siguen una distribución normal de acuerdo al test de Shapiro-Wilk para un nivel de significatividad del 5%.
+
+## RIESGO BAJO
+
+Del conjunto de las 80 observaciones correspondientes al dataset original, 25 responden a un perfil de riesgo bajo. A continuación muestro las medidas más relevantes de las variables de estas 25 observaciones.
+
+```{r SUMMARY RIESGO BAJO, echo=FALSE}
+summary(riesgo_Bajo)
+```
+
+De acuerdo a la información de la tabla, los clientes que presentan un perfil de riesgo bajo presentan una edad que oscila entre los 30 y 40 años; con unos ingresos que van de 18.000 a 20.500 anuales por término medio. Algo más de la mitad están casados y tienen alrededor de 2 hijos; presentan un ratio de endeudamiento sobre el patrimonio del 65% aproximadamente y la aversión al riesgo se encuentra dividida a partes iguales entre baja, media y alta.
+
+```{r SCATTERPLOT RIESGO BAJO, echo=FALSE, warning=FALSE}
+scatterplotMatrix(riesgo_Bajo[1:5])
+```
+
+Llevo a cabo la prueba de Shapiro-Wilk para comprobar la normalidad.
+
+```{r SHAPIRO-WILK RIESGO BAJO, echo=FALSE}
+shapiro.test(riesgo_Bajo$I)
+shapiro.test(riesgo_Bajo$Edad)
+shapiro.test(riesgo_Bajo$H)
+shapiro.test(riesgo_Bajo$P)
+shapiro.test(riesgo_Bajo$R)
+```
+
+Para el perfil de riesgo bajo se comprueba que la edad y el número de hijos no siguen una distribución normal de acuerdo al test de Shapiro-Wilk, con un nivel de significatividad del 5%.
+
+De acuerdo a los test realizados existen evidencias de falta de normalidad para algunas de las variables de cada grupo de riesgo. Supongo que la matriz de covarianzas es igual para todos los grupos.
+
+Realizo el análisis discriminante, aún así, ya sé que la primera de las condiciones no se cumple, por tanto no es plenamente adecuado en este caso.
+
+# ANALISIS DISCRIMINANTE
+
+Para la realización del análisis discriminante tendré únicamente en cuenta las variables numéricas del dataset. Es decir, bajo mi punto de vista, ni el estado civil, ni el sexo, ni el grado de aversión al riesgo tienen influencia sobre el perfil de riesgo de los clientes. Si lo tienen sin embargo los ingresos anuales, el patrimonio, el número de hijos a su cargo, la edad y el nivel de endeudamiento. La edad de una persona determina la experiencia profesional de esta, lo que puede influir en el nivel de ingresos anuales y estos a su vez en el patrimonio que cada persona posee. El número de hijos, a mi parecer influye en el nivel de gasto existente de cada cliente, el cual puede influir en el perfil de riesgo.
+
+```{r DELETTING DUMMIES, echo=FALSE}
+datos <- dplyr::select(datos, -Sexo_MUJER, -Sexo_HOMBRE, -EC_CASADO, -EC_SOLTERO, -A_ALTO, -A_MEDIO, -A_BAJO)
+```
+
+## LDA
+
+El objetivo del LDA es generar combinaciones lineales de las variables originales que ofrezcan la mejor separación posible entre los 3 grupos de riesgo que tenemos en nuestro dataset. Debo considerar los 3 grupos que hay y las 5 variables numéricas, el número máximo de funciones discriminantes válidas será el mínimo entre el número de grupos menos uno y el número de variables.
+
+```{r LDA, echo=FALSE, message=FALSE, warning=FALSE}
+datos_lda <- lda(TIPO~., data = datos)
+```
+
+A continuación visualizo los valores de las cargas de las funciones discriminantes.
+
+```{r CARGAS LDA, echo=FALSE}
+datos_lda
+```
+
+Cada una de las funciones discriminantes es una combinación lineal de las variables ingresos anuales, edad, número de hijos, patrimonio y ratio de endeudamiento del patrimonio. Así pues, la primera función discriminante queda definida de la siguiente forma:
+
+        0.337*I + 0.026*Edad + 0.220*H +0.004*P - 0.034*R
+        
+Mientras que la segunda función discriminante es:
+
+        0.273*I - 0.058*Edad - 0.378*H - 0.035*P + 0.040*R
+        
+La primera función discriminante consigue un tanto por ciento de separación del 74,4%. Mientras que la segunda función discriminante únicamente consigue un 25,6% de separación.
+
+Ahora calculo un vector de predicción con 2 dimensiones, una para cada grupo. Procedo a representar gráficamente cada una de las dos funciones discriminantes calculadas, de esta forma observo como trabaja cada una y si realiza una correcta diferenciación entre los 3 grupos de riesgo, bajo, medio y alto.
+
+```{r VALORES LDA, echo=FALSE}
+datos_lda_values <- predict(datos_lda)
+```
+
+### PRIMERA FUNCION DISCRIMINANTE
+
+```{r PRIMERA FUNCION DISCRIMINANTE LDA, echo=FALSE}
+ldahist(data = datos_lda_values$x[,1], g = datos$TIPO)
+```
+
+### SEGUNDA FUNCION DISCRIMINANTE
+
+```{r SEGUNDA FUNCION DISCRIMINANTE, echo=FALSE}
+ldahist(data = datos_lda_values$x[,2], g = datos$TIPO)
+```
+
+La primera función discriminante diferencia bien entre el grupo de riesgo alto y el bajo, sin embargo con el grupo de riesgo medio comete errores. La segunda función discriminante comete errores entre los 3 grupos.
+
+### MATRIZ DE CONFUSION Y PREDICCION
+
+Ahora dibujo la matriz de confusión y hallo la precisión del modelo.
+
+```{r CONFUSSION MATRIX LDA, echo=FALSE}
+table(predict(datos_lda)$class, datos$TIPO)
+```
+
+Como medida de la precisión del modelo calculo el error cometido por este en la predicción de los grupos de riesgo.
+
+```{r ERROR, echo=FALSE, results='hide'}
+
+error <- mean(datos$TIPO != datos_lda_values$class) * 100
+paste("Error: ", error, "%")
+
+```
+
+El modelo comete un error de un 28,75% en la predicción del grupo de riesgo de los clientes. 
+
+Realizo un análisis discrimante cuadrático.
+
+## QDA
+
+Procedo a la realización del análisis discriminante cuadrático. 
+
+```{r QDA, echo=FALSE}
+datos_qda <- qda(TIPO~., data = datos)
+```
+
+```{r CARGAS QDA, echo=FALSE}
+datos_qda
+```
+
+```{r VALORES QDA, echo=FALSE}
+datos_qda_values <- predict(datos_qda)
+```
+
+La matriz de confusión es la siguiente:
+
+```{r CONFUSSION MATRIX QDA, echo=FALSE}
+table(datos_qda_values$class, datos$TIPO)
+```
+
+Hallo el riesgo cometido por el modelo calculado.
+
+```{r ERROR QDA, echo=FALSE, results='hide'}
+error <- mean(datos$TIPO != datos_qda_values$class) * 100
+paste("Error: ", error, "%")
+```
+
+El error cometido por el modelo mediante el análisis discriminante cuadrático es de un 25%. Se obtiene una mayor precisión en la predicción de los grupos de riesgo de los clientes mediante el QDA.
+
+# ARBOL DE DECISION
+
+Lo primero ha realizar es una división de la muestra en train y validation, esta se realiza con una proporción 80:20.
+El criterio de decisión en la elección de las variables de cara a calcular el árbol de clasificación es el mismo que he aplicado anteriormente para el análisis discriminante.
+
+```{r TRAIN & VALIDATE, echo=FALSE}
+train <- sample(nrow(datos), 0.8*nrow(datos)) # muestra aleatoria de aprendizaje del arbol
+
+datos_train <- datos[train,] # muestra de entrenamiento
+
+datos_validate <- datos[-train,] # muestra de validación
+```
+
+Compruebo que la división del conjunto de observaciones se realiza de forma balanceada. Muestro las observaciones del conjunto train en primer lugar y posteriormente del validation.
+
+```{r DISTRIBUCION Y BALANCEO, echo=FALSE}
+table(datos_train$TIPO)
+
+table(datos_validate$TIPO)
+```
+
+La muestra como se puede comprobar está balanceada, por tanto, procedo a la estimación del árbol de inferencia.
+
+## ESTIMACION, REPRESENTACION E INTERPRETACION
+
+```{r ESTIMACION ARBOL Y VISUALIZACION, echo = FALSE, results = 'hide'}
+arbol <- rpart(TIPO ~ ., data = datos_train, method = "class",
+               parms = list(split = "information"))
+
+print(arbol)
+
+summary(arbol)
+```
+
+Para poder interpretar el árbol y observar los nodos, represento este gráficamente.
+
+```{r PLOTTING THE TREE, echo=FALSE}
+rpart.plot(arbol)
+```
+
+Las variables de mayor importancia son los ingresos, el ratio de endeudamiento sobre el patrimonio y la edad, estas son las utilizadas en el árbol. En primer lugar se evalúa el nivel de ingresos anuales, si es menor a 17.000 euros anuales directamente se asigna al cliente como de alto riesgo con un porcentaje de precisión del 83%. En caso de tener unos ingresos superiores a 17.000 euros anuales, en principio se le asigna a un perfil de riesgo medio, sin embargo, el nodo correspondiente no diferencia claramente entre bajo riesgo y medio, por ello se utiliza entonces el ratio de endeudamiento. Si el ratio de endeudamiento es inferior al 35% se asigna al cliente como de bajo riesgo, con una precisión del 88%. En caso contrario, se le asigna como de riesgo medio, con una precisión del 58%. Se vuelve a evaluar el ratio de endeudamiento, si este es inferior al 60% se le asigna a un perfil de riesgo medio con una precisión del 52%, en este nodo entonces se evalúa la edad. Si es inferior a los 28 años se le asigna como de bajo riesgo con una precisión del 59%, en caso contrario es un perfil de riesgo medio con un 88% de precisión. En el caso de que los ingresos sean superiores a 17.000 euros anuales y el ratio de endeudamiento sea superior al 60%, se establece al cliente como de riesgo medio con una precisión del 75%.
+
+El siguiente paso será llevar a cabo el cálculo del árbol podado, para ello obtengo el grado de complejidad paramétrica. Debo de establecer el grado de complejidad paramétrica que presente un menor error, aunque he de atender a que el error +/- la desviación típica no de como resultado un error total superior al de un grado de complejidad paramétrica inferior.
+
+Obtengo la tabla de complejidad paramétrica.
+
+```{r COMPLEJIDAD PARAMETRICA, echo=FALSE}
+arbol$cptable
+```
+
+Para visualizar mejor que grado de complejidad paramétrica escoger, realizo un gráfico de la curva.
+
+```{r PLOT COMPLEJIDAD PARAMETRICA, echo=FALSE}
+plotcp(arbol)
+```
+
+```{r MIN XERROR, echo=FALSE, results='hide'}
+arbol$cptable[which.min(arbol$cptable[,"xerror"]), "CP"]
+```
+
+Dados los resultados obtenidos mediante la tabla de complejidad paramétrica y la visualización de la curva, determino que he de quedarme con 4 grados de complejidad. Por tanto, no tendría sentido realizar una poda del árbol, aún así llevaré a cabo una poda y estableceré 3 grados de complejidad paramétrica con el objetivo de realizar una comparación entre los árboles una vez hechas las predicciones sobre la muestra de validación. 
+
+La complejidad paramétrica para la poda del árbol es de 0.04878049.
+
+```{r ARBOL PODADO, echo=FALSE}
+arbol.podado <- prune(arbol, cp = 0.04878049)
+```
+
+Represento el árbol podado.
+
+```{r PLOTTING ARBOL PODADO, echo=FALSE}
+rpart.plot(arbol.podado)
+```
+
+El nuevo árbol podado únicamente tiene en cuenta los ingresos anuales y el ratio de endeudamiento. Si los ingresos son inferiores a 17.000 euros anuales, el cliente queda establecido dentro del grupo de alto riesgo con una precisión del 83%. En caso contrario se procede a valuar el ratio de endeudamiento. Si este es inferior al 35% se le asigna al grupo de bajo riesgo con un precisión del 88%, si es superior al 35% se le engloba dentro del grupo de riesgo medio con una precisión del 58%.
+
+El siguiente pasó será realizar la predicción tanto del árbol original, como del podado, sobre la muestra de validación, representar las matrices de confusión y establecer el porcentaje de error de cada árbol.
+
+```{r PREDICCION DE ARBOLES, echo=FALSE}
+arbol1 <- predict(arbol, datos_validate, type = "class")
+arbol2 <- predict(arbol.podado, datos_validate, type = "class")
+```
+
+## ARBOL SIN PODAR
+
+La matriz de confusión del árbol original, es decir, sin podar; será la siguiente:
+
+```{r MATRIZ CONFUSION ARBOL ORIGINAL, echo=FALSE}
+table(datos_validate$TIPO, arbol1, dnn = c("Actual", "Predicted"))
+```
+
+```{r ERROR ARBOL ORIGINAL, echo=FALSE, results='hide'}
+error <- (5 / 16) * 100
+paste("Error: ", error, "%")
+```
+
+El error cometido por el árbol original es de un 31,25%.
+
+## ARBOL PODADO
+
+La matriz de confusión del árbol podado es la siguiente.
+
+```{r MATRIZ CONFUSION ARBOL PODADO, echo=FALSE}
+table(datos_validate$TIPO, arbol2, dnn = c("Actual", "Predicted"))
+```
+
+```{r ERROR ARBOL PODADO, echo=FALSE, results='hide'}
+error <- (6 / 16) * 100
+paste("Error: ", error, "%")
+```
+
+El error cometido por el árbol podado es de un 37,5%.
+
+La principal cuestión a la hora de realizar el podado de los árboles es ver qué interesa más, perder precisión y ganar simplicidad, o lo contrario.
+
+En este caso, a mi parecer, la pérdida de precisión no compensa la ganancia de simplicidad del árbol.
+
+# REFERENCIAS
+
+        - Código en GitHub: https://github.com/BeltranCunef/Master 
+
+
