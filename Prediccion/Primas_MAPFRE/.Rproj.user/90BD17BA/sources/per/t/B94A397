@@ -1,0 +1,27 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1573553831309.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "4051391850",
+    "id" : "B94A397",
+    "lastKnownWriteTime" : 1573754374,
+    "last_content_update" : 1573754374534,
+    "path" : "~/Prediccion/Primas_MAPFRE/Primas_MAPFRE.Rmd",
+    "project_path" : "Primas_MAPFRE.Rmd",
+    "properties" : {
+        "cursorPosition" : "128,14",
+        "last_setup_crc32" : "36D5EF68bb338d19",
+        "scrollLine" : "120",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

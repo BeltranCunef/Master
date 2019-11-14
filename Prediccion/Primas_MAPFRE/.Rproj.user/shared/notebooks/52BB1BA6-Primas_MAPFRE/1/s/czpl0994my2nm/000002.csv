@@ -1,0 +1,8 @@
+"0",""
+"0","# Guardo los errores de ETS como e1"
+"0",""
+"0","e1 <- tsCV(Observaciones, fets, h = 1)"
+"0",""
+"0","# Guardo los errores de ARIMA como e2"
+"0",""
+"0","e2 <- tsCV(Observaciones, farima, h = 1)"

@@ -1,0 +1,9 @@
+{
+    "path" : "~/Prediccion/Primas_MAPFRE",
+    "sortOrder" : [
+        {
+            "ascending" : true,
+            "columnIndex" : 2
+        }
+    ]
+}

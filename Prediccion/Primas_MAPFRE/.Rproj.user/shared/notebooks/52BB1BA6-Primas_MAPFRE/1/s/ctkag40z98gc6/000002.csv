@@ -1,0 +1,4 @@
+"0",""
+"0","# paso a formato zoo y me quedo unicamente con una de las columnas"
+"0",""
+"0","zPrimas <- as.zoo(xPrimas$xPrimas.Close)"
