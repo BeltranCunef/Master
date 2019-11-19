@@ -1,0 +1,5 @@
+"0","ggplot(tterreno, aes(x = plazas, y = peso)) + geom_boxplot(color = 'red', fill = 'red', alpha = 0.2,"
+"0","                                                           notch = F, notchwidth = 2, "
+"0","                                                           outlier.colour = 'blue', outlier.fill = 'blue', outlier.size = 2) +"
+"0","  stat_summary(fun.y = mean, geom = ""point"", shape = 20, size = 3, color = ""green"", fill = ""green"") +"
+"0","  xlab('Nº de plazas') + ylab('Peso (Kg)') + ggtitle('Diagrama de cajas Peso - Nº plazas')"

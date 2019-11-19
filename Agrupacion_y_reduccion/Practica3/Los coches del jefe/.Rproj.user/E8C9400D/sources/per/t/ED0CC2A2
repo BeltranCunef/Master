@@ -1,0 +1,27 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1574000562805.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3690200653",
+    "id" : "ED0CC2A2",
+    "lastKnownWriteTime" : 1574170224,
+    "last_content_update" : 1574170224155,
+    "path" : "C:/Users/Beltran/Desktop/Master/Reduccion/Parte 2/Los coches del jefe/src/EDA.Rmd",
+    "project_path" : "src/EDA.Rmd",
+    "properties" : {
+        "cursorPosition" : "235,85",
+        "last_setup_crc32" : "EA24ADE5bb338d19",
+        "scrollLine" : "227",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

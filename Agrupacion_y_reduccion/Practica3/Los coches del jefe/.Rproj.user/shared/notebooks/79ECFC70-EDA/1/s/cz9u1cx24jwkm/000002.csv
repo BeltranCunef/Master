@@ -1,0 +1,1 @@
+"0","ggplot(tterreno, aes(x = velocida, y = acelerac)) + geom_point() + xlab('velocidad') + ylab('aceleración')"

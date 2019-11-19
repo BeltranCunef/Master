@@ -1,0 +1,6 @@
+"0","tterreno %>% group_by(marca) %>% summarise(Mean90 = mean(cons90, na.rm = T),"
+"0","                                           Mean120 = mean(cons120, na.rm = T),"
+"0","                                           MeanUrb = mean(consurb, na.rm = T),"
+"0","                                           NAS90 = sum(is.na(cons90)),"
+"0","                                           NAS120 = sum(is.na(cons120)),"
+"0","                                           NASUrb = sum(is.na(consurb)))"

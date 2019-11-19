@@ -1,0 +1,275 @@
+---
+title: "EDA"
+author: "Beltran Aller Lopez"
+date: "17/11/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+---
+
+ TO DO LIST:
+
+  *
+  *
+  *
+  *
+
+ LIBRARIES
+
+```{r LIBRARIES, message=FALSE}
+library(haven)
+library(factoextra)
+library(cluster)
+library(dplyr)
+library(scales)
+library(corrplot)
+library(ggplot2)
+```
+
+---
+
+# DATA
+
+```{r READ AND VIEW}
+tterreno <- read_sav("../data/tterreno.sav")
+View(tterreno)
+```
+
+# LOOKING INTO THE DATASET
+
+```{r SUMMARY}
+summary(tterreno)
+```
+
+```{r AS DATAFRAME}
+tterreno <- as.data.frame(tterreno)
+```
+
+```{r AS NUMERIC AND AS FACTOR}
+tterreno$marca <- as.factor(tterreno$marca)
+
+tterreno$cilindro <- as.factor(tterreno$cilindro)
+
+tterreno$plazas <- as.factor(tterreno$plazas)
+
+tterreno$acel2 <- as.factor(tterreno$acel2)
+
+```
+
+```{r PERCENTAGE NAS´s}
+apply(tterreno, 2, function(x) {sum(is.na(x))/nrow(tterreno)})
+```
+
+Se dispone de dos variables para medir la aceleración de los distintos vehículos. Por un lado, una variable de tipo numérico, llamada 'acelerac', esta mide la aceleración de 0 a 100 km/h del vehículo es cuestión. Por otro lado, una variable categórica llamada 'acel2', dicha vaiable toma 2 valores; 1 si la aceleración de 0 100 km/ toma menos de 10 segundos y 2 en caso contrario.
+
+La variable 'acelerac' presenta un 36'8 % de Na's, sin embargo es una variable que considero relevante de cara a la realización del clúster. Es por ello, que con el fin de no eliminar las observaciones, puesto que el total de observaciones con Na's constituye un porcentaje elevado de la población, procedo a la imputación de los valores. 
+
+El método de imputación será el siguiente:
+
+Se partirá de un valor base de aceleración de 10, en función del valor de la observación en la variable 'acel2', se procederá a restar o sumar la desviación típica de las observaciones existentes, es decir, si 'acel2' es igual a 1 quiere decir que la aceleración debe tomar un valor inferior a 10, por tanto, se restará al valor base inicial la desviación típica. Con el fin de no generar valores homogéneos siempre, se procederá a multiplicar la desviación típica a restar por un valor entre 0 y 1 generado aleatoriamente.
+
+```{r IMPUTACIÓN ACELERAC, warning=FALSE}
+
+# calculo la desviacion estandar de la variable 'acelerac'
+
+desviacion_acelerac <- sd(tterreno$acelerac, na.rm = TRUE)
+
+# recorro el dataframe
+
+for (i in seq(1:nrow(tterreno))) {
+  
+  # compruebo si es un Na
+  
+  if (is.na(tterreno$acelerac[i])) {
+    
+    aleatorio = runif(1, min = 0, max = 1) # genero un aleatorio entre 0 y 1
+    
+    # compruebo el valor de la variable 'acel2'
+    
+    if (tterreno$acel2 == '1') {
+      tterreno$acelerac[i] <- 10 - desviacion_acelerac*aleatorio
+    }
+    else {
+      tterreno$acelerac[i] <- 10 + desviacion_acelerac*aleatorio
+    }
+  }
+}
+```
+
+A continuación procedo a borrar la variable 'acel2'.
+
+```{r DELETTING ACEL2}
+tterreno <- select(tterreno, -acel2)
+```
+
+```{r NUEVO SUMMARY}
+summary(tterreno)
+```
+
+Una vez imputados los valores Na's para la aceleración, procedo a determinar una nueva forma de imputar los valores Na's para el consumo a 90 y 120 km/h, puesto que son las siguientes dos variables con más Na´s del dataset.
+
+```{r MEDIAS CONSUMOS}
+tterreno %>% group_by(marca) %>% summarise(Mean90 = mean(cons90, na.rm = T),
+                                           Mean120 = mean(cons120, na.rm = T),
+                                           MeanUrb = mean(consurb, na.rm = T),
+                                           NAS90 = sum(is.na(cons90)),
+                                           NAS120 = sum(is.na(cons120)),
+                                           NASUrb = sum(is.na(consurb)))
+```
+
+```{r IMPUTACION CONSUMOS}
+
+# la imputacion se realiza con un for, las marcas 1 y 17 se imputan a mano ciertos consumos en base
+# al conocimiento del negocio, puesto que se carece de la media
+
+tterreno$cons120[1:3] <- tidyr::replace_na(tterreno$cons120[1:3], (12 + 8.333)/2)
+
+# para la marca 17, UAZ, se imputan los consumos acorde al modelo más parecido posible, este es el Ssangyong Family RV, la 
+# observacion 92, presenta mismo nº de cilindros, mismos cc, potencia, rpm y plazas
+
+tterreno$cons90[122:125] <- tidyr::replace_na(tterreno$cons90[122:125], tterreno$cons90[92])
+tterreno$cons120[122:125] <- tidyr::replace_na(tterreno$cons120[122:125], tterreno$cons120[92])
+
+# consumo a 90
+
+for (i in seq(1:nrow(tterreno))) {
+  if (tterreno$marca[i] == '11' & is.na(tterreno$cons90[i])) {
+    tterreno$cons90[i] = 8.4
+  }
+  else if (tterreno$marca[i] == '13' & is.na(tterreno$cons90[i])) {
+    tterreno$cons90[i] = 8.17
+  }
+}
+
+# consumo a 120
+
+for (i in seq(1:nrow(tterreno))) {
+  if (tterreno$marca[i] == '5' & is.na(tterreno$cons120[i])) {
+    tterreno$cons120[i] = 16.2
+  }
+  else if (tterreno$marca[i] == '11' & is.na(tterreno$cons120[i])) {
+    tterreno$cons120[i] = 12.185714
+  }
+  else if (tterreno$marca[i] == '13' & is.na(tterreno$cons120[i])) {
+    tterreno$cons120[i] = 12.6
+  }
+}
+
+# consumo urbano
+
+for (i in seq(1:nrow(tterreno))) {
+  if (tterreno$marca[i] == '5' & is.na(tterreno$consurb[i])) {
+    tterreno$consurb[i] = 13.744
+  }
+  else if (tterreno$marca[i] == '7' & is.na(tterreno$consurb[i])) {
+    tterreno$consurb[i] = 12
+  }
+  else if (tterreno$marca[i] == '11' & is.na(tterreno$consurb[i])) {
+    tterreno$consurb[i] = 12.478571
+  }
+  else if (tterreno$marca[i] == '16' & is.na(tterreno$consurb[i])) {
+    tterreno$consurb[i] = 12.22
+  }
+}
+
+
+```
+
+```{r SUMMARY FINAL}
+summary(tterreno)
+```
+
+Procedo a omitir los valores Na's restantes del dataset.
+
+```{r DELETTING NAS}
+tterreno <- na.omit(tterreno)
+```
+
+# PLOTS
+
+```{r CILINDROS}
+ggplot(tterreno) + geom_bar(aes(x = cilindro)) + xlab('Nº de cilindros') + ylab('Nº de vehículos')
+```
+
+```{r PLAZAS}
+ggplot(tterreno) + geom_bar(aes(x = plazas)) + xlab('Nº de plazas') + ylab('Nº de vehículos')
+```
+
+
+```{r VELOCIDAD/ACELERACION}
+ggplot(tterreno, aes(x = velocida, y = acelerac)) + geom_point() + xlab('velocidad') + ylab('aceleración')
+```
+
+```{r PESO/CONSUMO90}
+ggplot(tterreno, aes(x = peso, y = cons90, color = plazas)) + geom_point() + xlab('Peso (Kg)') + ylab('Consumo a 90 Km/h (Litros)')
+```
+
+```{r PESO/CONSUMO120}
+ggplot(tterreno, aes(x = peso, y = cons120, color = plazas)) + geom_point() + xlab('Peso (Kg)') + ylab('Consumo a 120 Km/h (Litros)')
+```
+
+```{r PESO/CONSUMOURBANO}
+ggplot(tterreno, aes(x = peso, y = consurb, color = plazas)) + geom_point() + xlab('Peso (Kg)') + ylab('Consumo urbano (Litros)')
+```
+
+```{r PLAZAS/PESO}
+ggplot(tterreno, aes(x = plazas, y = peso)) + geom_boxplot(color = 'red', fill = 'red', alpha = 0.2,
+                                                           notch = F, notchwidth = 2, 
+                                                           outlier.colour = 'blue', outlier.fill = 'blue', outlier.size = 2) +
+  stat_summary(fun.y = mean, geom = "point", shape = 20, size = 3, color = "green", fill = "green") +
+  xlab('Nº de plazas') + ylab('Peso (Kg)') 
+```
+
+No nos interesan ni el modelo, puesto que no nos aporta información para agrupar diferentes tipos de todoterrenos, si quisieramos agruparlos en base al modelo, ya lo habríamos hecho; ni tampoco la marca por la misma razón que el modelo. Elimino tales variables del dataset.
+
+```{r DELETTING MARCA AND MODELO}
+tterreno <- select(tterreno, -marca, -modelo)
+```
+
+# CORRELACIONES
+
+```{r MATRIZ DE CORRELACIONES}
+corrplot(round(cor(tterreno[,c(3:6, 8:12)], method = 'pearson'), 2), method = 'number', type = 'lower')
+```
+
+# ESCALADO
+
+Las variables de tipo numérico del dataset están medidas en distintas unidades, por ello, para normalizar el dataset aplico un reescalado a estas. Lo llevo a cabo mediante una tipificación de los valores de cada una de las variables. Es decir:
+
+$z_i = (x_i - \mu)/ \sigma$
+
+```{r FUNCION TIPIFICACION}
+tipificar <- function(datos) {
+  for (columna in names(datos)) {
+    if (class(datos[,columna]) == 'integer' | class(datos[,columna]) == 'numeric') {
+      datos[,columna] <- scale(datos[,columna])
+    }
+  }
+  return(datos)
+}
+```
+
+```{r TIPIFICADO}
+tterreno <- tipificar(tterreno)
+```
+
+```{r SUMMARY DATASET TIPIFICADO}
+summary(tterreno)
+```
+
+# DISTANCIAS
+
+## ENTRE OBSERVACIONES
+
+```{r OBJETO DISTANCIAS OBSERVACIONES}
+distancias_observaciones_coches <- get_dist(tterreno, method = 'pearson')
+```
+
+```{r MATRIZ DISTANCIAS OBSERVACIONES}
+fviz_dist(distancias_observaciones_coches)
+```
+

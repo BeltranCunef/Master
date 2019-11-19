@@ -1,0 +1,1 @@
+"0","ggplot(tterreno) + geom_bar(aes(x = cilindro)) + xlab('Nº de cilindros') + ylab('Nº de vehículos')"

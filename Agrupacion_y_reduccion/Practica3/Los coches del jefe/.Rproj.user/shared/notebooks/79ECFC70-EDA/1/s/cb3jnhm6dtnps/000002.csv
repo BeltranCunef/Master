@@ -1,0 +1,8 @@
+"0","tterreno$marca <- as.factor(tterreno$marca)"
+"0",""
+"0","tterreno$cilindro <- as.factor(tterreno$cilindro)"
+"0",""
+"0","tterreno$plazas <- as.factor(tterreno$plazas)"
+"0",""
+"0","tterreno$acel2 <- as.factor(tterreno$acel2)"
+"0",""

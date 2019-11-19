@@ -1,0 +1,8 @@
+"0","tipificar <- function(datos) {"
+"0","  for (columna in names(datos)) {"
+"0","    if (class(datos[,columna]) == 'integer' | class(datos[,columna]) == 'numeric') {"
+"0","      datos[,columna] <- scale(datos[,columna])"
+"0","    }"
+"0","  }"
+"0","  return(datos)"
+"0","}"

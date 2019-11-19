@@ -1,0 +1,2 @@
+"0","tterreno <- read_sav(""../data/tterreno.sav"")"
+"0","View(tterreno)"

@@ -1,0 +1,1 @@
+"0","distancias_observaciones_coches <- get_dist(tterreno, method = 'pearson')"

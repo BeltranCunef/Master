@@ -1,0 +1,1 @@
+"0","corrplot(round(cor(tterreno[,c(3:6, 8:12)], method = 'pearson'), 2), method = 'number', type = 'lower')"
