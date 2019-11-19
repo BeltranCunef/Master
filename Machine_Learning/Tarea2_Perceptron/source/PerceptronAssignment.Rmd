@@ -1,0 +1,298 @@
+---
+title: "PerceptronAssignment"
+author: "Beltran Aller Lopez"
+date: "13/11/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# FUNCTIONS // ALGORITHM
+
+```{r FUNCTIONS}
+DistanceFromPlane = function(z, w, b) {
+  sum(z * w) + b # mido la distancia de los puntos al plano
+}
+
+ClassifyLinear = function(x, w, b) {
+  distances = apply(x, 1, DistanceFromPlane, w, b) # x es el dataframe, a cada registro le aplicas la                                                       funcion al plano que forman la w con la b
+  return(ifelse(distances < 0, -1, +1))
+}
+
+EuclideanNorm <- function(x) {
+  return(sqrt(sum(x * x)))
+}
+
+# PerceptronFunction <- function(x, y, learning.rate = 1) {
+#   w = vector(length = ncol(x)) # initialize w, vector vacio que incluye tantos valores como variables                                    tiene x
+#   b = 0 # Initialize b
+#   iterations = 0 # count iterations
+#   R = max(apply(x, 1, EuclideanNorm)) # calculo la maxima distancia
+#   convergence = FALSE # to enter the while loop
+#   while (!convergence) {
+#     convergence = TRUE # hopes luck
+#     yc <- ClassifyLinear(x, w, b) # predicciones, resultado de los puntos respecto al plano
+#     for (i in 1:nrow(x)) { # para cada punto mira si esta bien predicho
+#       if (y[i] != yc[i]) { # deja de converger en el momento en que todas las predicciones acierten
+#         convergence <- FALSE
+#         
+#         # actualizamos el plano en base a los valores originales y la tasa de aprendizaje
+#         
+#         w <- w + learning.rate * y[i] * x[i,] # valor original + tasa de aprendizaje * lo que me                                                       deberia haber dado para el valor que deberia
+#         b <- b + learning.rate * y[i] * R^2   
+#         
+#         iterations <- iterations + 1
+#       }
+#     }
+#   }
+# s = EuclideanNorm(w)
+# return(list(w = w/s, b = b/s, steps = iterations))
+# }
+```
+
+# ASSIGNMENT
+
+## Questions
+
+### 1.
+
+Try other learning rates. Which one is the cost function? Explain the algorithm (help: http://www.dbs.ifi.lmu.de/Lehre/MaschLernen/SS2014/Skript/Perceptron2014.pdf).
+
+### 2.
+
+Try to plot the plane (or the line) every 10 or 20 iterations. 
+
+## Answers
+
+### 1.
+
+#### The cost function
+
+The cost function of the PerceptronFunction could be definite generally:
+
+$\sum\limits_{i=1}^N|-y_ih_i|_+$
+
+- $N$ is the number of samples.
+- $h_i$ is the activation function of the perceptron, which is weighted sum of inputs.
+- $y_i$ is the binary calssification.
+
+We have a problem of two classes that are linearly separable, so $h_i$ will be a line and we need to know its formula. According to the way we generate the samples, the formula of $h_i$ is going to be bornt of the formula of a straight line. We remenber that the formula of a straight line is the next:
+
+$y_i = mx_i + b$
+
+Where:
+
+- $x$ and $y$ are two points.
+- $m$ is the sloap.
+- $b$ is the intercept.
+
+If we pay attention to the way we generate the values:
+
+$x_2 = x_1 + 0.5$
+
+Our sloap is equal to 1 and our intercept equal to 0.5. Now we only have to pass $x_1 + 0.5$ to the other side of the equal and finally we just get the formula of $h_i$.
+
+$h_i = - 0.5 - x_1 + x_2$
+
+So the cost function is:
+
+$\sum\limits_{i=1}^N|-y_i(-0.5 - x_{1i} + x_{2i})|_+$
+
+#### Explaining the algorithm
+
+The PerceptronFunction receives 3 parameters, 2 vectors called $x$ and $y$, and a learning rate which could take any value between 0 and 1. $x$ contains 2 values, $x_1$ and $x_2$, which are all of them the points that are going to be classified. $y$ contains the real value of the classification of every point. 
+
+In our case is very easy, we define $x_1$ and $x_2$ generating 2 uniform distributions randomly. And then, we keep those values in the vector called $x$.
+
+For generating the $y$ values, we attend to the next rule:
+
+If $x_2 > x_1 + 0.5$ then $y = 1$, else $y = -1$.
+
+We just have the parameters of the PerceptronFunction.
+
+At first, PerceptronFunction creates an empty vector called $w$, in which are going to be saved 2 of the values of the plane which will classify our points. The third value is $b$, the separator, which is initialize to zero too. We also calculate the maximun distance to the plane of the points, it is called $R$.
+
+The PerceptronFunction starts a while loop and into it does the predictions of every point using the ClassifyLinear function. This function calculate the distance between the plane formed by $w$ and $b$, and all the points. According to the results of the ClassifyLinear function, predicts a value of every point, $1$ or $-1$, if the predicted value is equal to the real value, nothing happens. But if the predicted and the real values are not equal, the PerceptronFunction refresh the plane following the next formulas:
+
+$w = w + learning.rate * y_i * x_{1i}$
+
+$b = b + learning.rate * y_i * R^2$
+
+The loop will finish if all of the predicted values are equal to the real values. We have to realise that the learning rate never can take zero as value, because if it did it, we could not refresh the plane, the predicted and real values will never coincide and the loop would be infinite.
+
+The PerceptronFunction returns a list of 3 elements, the vector $w$ which values are splitted by its euclidean norm, $b$ splitted by the euclidean norm of $w$ too and the number of iterations of the loop.
+
+### 2.
+
+I am going to redefine the PerceptronFunction in order to save the values of the line which will classify the points.
+
+```{r NEW PERCEPTRON FUNCTION}
+PerceptronFunction <- function(x, y, learning.rate = 1) {
+  
+  # The next dataframe is used to save the values of w and b in order to plot the line 
+  
+  linea <- data.frame("x1" = 0, "x2" = 0, "b" = 0) 
+  
+  w = vector(length = ncol(x)) # initialize w
+  
+  b = 0 # Initialize b
+  
+  iterations = 0 # count iterations
+  
+  R = max(apply(x, 1, EuclideanNorm)) # maximum distance to the plane
+  
+  convergence = FALSE # to enter the while loop
+  
+  while (!convergence) {
+    convergence = TRUE # hopes luck
+    yc <- ClassifyLinear(x, w, b) 
+    for (i in 1:nrow(x)) { 
+      if (y[i] != yc[i]) { 
+        convergence <- FALSE
+        
+        w <- w + learning.rate * y[i] * x[i,] 
+        
+        b <- b + learning.rate * y[i] * R^2   
+        
+        iterations <- iterations + 1
+        
+        linea[i,] <- c(w[1]/EuclideanNorm(w), w[2]/EuclideanNorm(w), b/EuclideanNorm(w))
+      }
+    }
+  }
+s = EuclideanNorm(w)
+return(list(w = w/s, b = b/s, steps = iterations, linea = linea))
+}
+```
+
+I generate the data set.
+
+```{r DATA}
+set.seed(123)
+
+# very easy
+# x2 = x1 + 1/2
+x1 <- runif(50,-1,1)
+x2 <- runif(50,-1,1)
+x <- cbind(x1,x2)
+y <- ifelse(x2 > 0.5 + x1, +1, -1)
+```
+
+Here I run the function using the dataset generated.
+
+```{r TEST}
+the_perceptron <- PerceptronFunction(x,y)
+predicted_y <- ClassifyLinear(x, the_perceptron$w, the_perceptron$b)
+# error
+print(sum(abs(y - predicted_y)))
+```
+
+The next step will be do a function in order to paint the graphics.
+
+```{r DIBUJAR LINEA}
+Dibujar <- function(x,y,linea) {
+  for (i in seq(1,nrow(linea))) {
+    plot(x, pch = ifelse(y > 0, "+", "-"), xlim = c(-5,5), ylim = c(-5,5),  cex = 2)
+    abline(-linea[i,3]/linea[i,2],-linea[i,1]/linea[i,2])
+  }
+}
+```
+
+Now I plot the graphics.
+
+```{r DIBUJO}
+Dibujar(x, y, the_perceptron$linea)
+```
+
+Now I am going to try to do a similar example but in 3D. At first I need to create randomly a dataset.
+
+```{r DATA 3D}
+set.seed(123)
+
+# very easy
+# x2 = x1 + 1/2
+x1 <- runif(50,-1,1)
+x2 <- runif(50,-1,1)
+x3 <- runif(50,-1,1)
+x <- cbind(x1,x2,x3)
+y <- ifelse(x3 > 0.5 + x1 + x2, +1, -1)
+x_y <- cbind(x,y)
+```
+
+I modificate the code of the PerceptronFunction in order to adapt it to 3D, it is very simple.
+
+```{r PERCEPTRON3D}
+Perceptron3D <- function(x, y, learning.rate = 1) {
+  
+  # The next dataframe is used to save the values of w and b in order to plot the plane 
+  
+  plane <- data.frame("x1" = 0, "x2" = 0, "x3" = 0, "b" = 0) 
+  
+  w = vector(length = ncol(x)) # initialize w
+  
+  b = 0 # Initialize b
+  
+  iterations = 0 # count iterations
+  
+  R = max(apply(x, 1, EuclideanNorm)) # maximum distance to the plane
+  
+  convergence = FALSE # to enter the while loop
+  
+  while (!convergence) {
+    convergence = TRUE # hopes luck
+    yc <- ClassifyLinear(x, w, b) 
+    for (i in 1:nrow(x)) { 
+      if (y[i] != yc[i]) { 
+        convergence <- FALSE
+        
+        w <- w + learning.rate * y[i] * x[i,] 
+        
+        b <- b + learning.rate * y[i] * R^2   
+        
+        iterations <- iterations + 1
+        
+        plane[i,] <- c(w[1]/EuclideanNorm(w), w[2]/EuclideanNorm(w),
+                       w[3]/EuclideanNorm(w), b/EuclideanNorm(w))
+      }
+    }
+  }
+s = EuclideanNorm(w)
+return(list(w = w/s, b = b/s, steps = iterations, plano = plane))
+}
+```
+
+Testing the new function.
+
+```{r TEST3D}
+the_perceptron_3D <- Perceptron3D(x,y)
+predicted_y <- ClassifyLinear(x, the_perceptron_3D$w, the_perceptron_3D$b)
+# error
+print(sum(abs(y - predicted_y)))
+```
+
+I will plot the best plane do it by the Perceptron3D function, in order to do that I will save that plane in a object.
+
+```{r BESTPLANE}
+bestplane <- data.frame("x" = the_perceptron_3D$w[1], "y" = the_perceptron_3D$w[2],
+                        "z" = the_perceptron_3D$w[3], "b" = the_perceptron_3D$w[4])
+```
+
+Now I know that the new function runs correctly, I just need to plot the planes in the 3D space. The library that I use is the following:
+
+```{r LIBRARY FOR 3D, message=FALSE, results='hide'}
+library(rgl)
+```
+
+Here I have the final result.
+
+```{r DIBUJO 3D}
+plot3d(x_y[,1], x_y[,2], x_y[,3], col = ifelse(x_y[,4] == 1, "blue", "red"))
+planes3d(bestplane$x, bestplane$y, bestplane$z, bestplane$b, alpha = 0.5, col = 'azure')
+```
+
+
+
+
+

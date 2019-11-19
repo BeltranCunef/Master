@@ -1,0 +1,4 @@
+"0","Primas <- to.quarterly(Primas)"
+"2","Error in try.xts(x) : 
+  Error in as.POSIXlt.character(x, tz, ...) :   character string is not in a standard unambiguous format
+"

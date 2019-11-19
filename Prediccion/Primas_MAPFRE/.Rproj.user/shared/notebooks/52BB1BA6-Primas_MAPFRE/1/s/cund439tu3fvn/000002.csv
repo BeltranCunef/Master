@@ -1,0 +1,2 @@
+"0","ggfreqplot(as.ts(zPrimas), freq = 4, nrow = 1, facet.labeller = c(""1T"",""2T"",""3T"",""4T"")) + "
+"0","  ggtitle(""Primas Trimestrales"")"

@@ -1,0 +1,206 @@
+---
+title: "Primas Mapfre"
+author: "Beltran Aller Lopez"
+date: "11/11/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# TO DO LIST
+
+
+
+
+# LIBRARIES & SEED
+
+```{r LIBRARIES, message=FALSE}
+library(readr)
+library(forecast)
+library(ggplot2)
+library(xts)
+library(ggfortify)
+```
+
+```{r SEED}
+set.seed(123)
+```
+
+# DATA
+
+Procedo a cargar el dataset en primer lugar.
+
+```{r READING, message=FALSE, echo=FALSE}
+Primas <- read_delim("data/Primas_mapfre.csv", 
+    ";", escape_double = FALSE, col_types = cols(Fecha = col_date(format = "%m/%d/%Y")), 
+    locale = locale(decimal_mark = ","), 
+    trim_ws = TRUE)
+View(Primas)
+```
+
+```{r SUMA PRIMAS}
+Primas$Suma_Primas <- Primas$Primas_vida + Primas$Primas_no_vida
+View(Primas)
+```
+
+# ANALISIS EXPLORATORIO
+
+```{r PLOTTING PRIMAS, message=FALSE}
+ggplot(data = Primas, aes(x = Primas$Fecha)) + geom_smooth(aes(y = Primas$Primas_vida, colour = 'Primas_vida')) +
+  geom_smooth(aes(y = Primas$Primas_no_vida, colour = 'Primas_no_vida')) + geom_smooth(aes(y = Primas$Suma_Primas, colour = 'Suma_Primas')) + xlab('Fecha') + ylab('Primas') 
+```
+
+# TRANSFORMACION DE DATOS
+
+```{r TO XTS}
+
+# convierto el dataframe a un objeto xts
+
+xPrimas <- xts(Primas$Suma_Primas, order.by = as.Date(Primas$Fecha, "%Y%d%m"), frequency = 4)
+```
+
+```{r TO TRIMESTRAL}
+
+# convierto la serie en trimestral
+
+xPrimas <- to.quarterly(xPrimas)
+```
+
+```{r TO ZOO}
+
+# paso a formato zoo y me quedo unicamente con una de las columnas
+
+zPrimas <- as.zoo(xPrimas$xPrimas.Close)
+```
+
+# REPRESENTACION TRIMESTRAL
+
+```{r SERIE, message=FALSE}
+autoplot(zPrimas) + ggtitle('Primas trimestrales de seguros') + xlab('Trimestres') + ylab('Primas')
+```
+
+```{r ESTACIONARIO}
+ggfreqplot(as.ts(zPrimas), freq = 4, nrow = 1, facet.labeller = c("1T","2T","3T","4T")) + 
+  ggtitle("Primas Trimestrales")
+```
+
+# PREDICCION
+
+```{r SERIE OBSERVADA}
+
+# creo una serie observada, empiezo en el primer elemento y finalizo 4 elementos antes
+
+Observaciones <- window(zPrimas, start = index(zPrimas[1]), end = index(zPrimas[length(zPrimas) - 4]))
+```
+
+## ETS
+
+```{r FORECAST ETS}
+
+# selecciono automaticamente el ets
+
+etsfit <- ets(Observaciones)
+
+# prediccion del modelo
+
+ForePrimas <- forecast(etsfit)
+```
+
+```{r MODELO}
+summary(ForePrimas)
+```
+
+El modelo obtenido tiene tendencia aditiva, estacionalidad aditiva amortiguada y distribución de los errores aditiva.
+
+```{r REPRESENTACION GRAFICA}
+plot(ForePrimas)
+lines(window(zPrimas),type = "o")
+```
+
+```{r ACTUAL Y PREDICCION}
+matrix(c(etsfit$mean[1:4], zPrimas[(length(zPrimas) - 5):length(zPrimas)]), ncol = 2, 
+       dimnames = list(c("2017 Q2", "2017 Q3", "2017 Q4"), c("Predicho", "Real"))) 
+```
+
+## ARIMA
+
+### PREDICCION
+
+```{r ARIMA SELECTION}
+
+# selecciono automaticamente el arima
+
+arimafit <- auto.arima(Observaciones, lambda = 0)
+
+# visualizo el arima
+
+summary(arimafit)
+```
+
+```{r ERRORES}
+ggtsdisplay(arimafit$residuals)
+```
+
+```{r BOX_LJUNG TEST}
+Box.test(arimafit$residuals,lag = 3, fitdf = 1, type = "Lj")
+Box.test(arimafit$residuals,lag = 6, fitdf = 1, type = "Lj")
+Box.test(arimafit$residuals,lag = 12, fitdf = 1, type = "Lj")
+```
+
+El p-valor obtenido es superior a los niveles de significación, 5%, por tanto es Ruido Blanco.
+
+```{r FORECAST ARIMA}
+ForePrimasArima <- forecast(arimafit)
+summary(ForePrimasArima)
+```
+
+```{r REPRESENTACION GRAFICA ARIMA, message=FALSE}
+
+df_new <- data.frame(value = as.vector(zPrimas),
+                     time = time(zPrimas))
+
+ggplot(df_new) + geom_point(aes(x = time, y = value)) + geom_line(aes(x = time,y = value)) +
+  geom_forecast(ForePrimasArima,alpha = 0.4) + ggtitle("ARIMA: Predicción primas seguros")
+```
+
+# COMPARACION
+
+```{r RESIDUALS}
+checkresiduals(etsfit)
+checkresiduals(arimafit)
+```
+
+```{r FUNCIONES}
+fets <- function(x, h) {
+  forecast(ets(x), h = h)
+}
+farima <- function(x, h) {
+  forecast(auto.arima(x), h = h)
+}
+```
+
+```{r CROSS VALIDATION}
+
+# Guardo los errores de ETS como e1
+
+e1 <- tsCV(Observaciones, fets, h = 1)
+
+# Guardo los errores de ARIMA como e2
+
+e2 <- tsCV(Observaciones, farima, h = 1)
+```
+
+```{r COMPARACION ERRORES}
+
+# error por ETS
+
+mean(e1^2, na.rm = TRUE)
+
+# error por ARIMA
+
+mean(e2^2, na.rm = TRUE)
+```
+
+Dados los resultados obtenidos es mejor el modelo calculado por ARIMA que el que se obtiene mediante ETS.

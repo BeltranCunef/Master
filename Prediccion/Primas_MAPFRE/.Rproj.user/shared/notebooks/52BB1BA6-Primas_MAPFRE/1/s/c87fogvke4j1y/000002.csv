@@ -1,0 +1,7 @@
+"0",""
+"0","df_new <- data.frame(value = as.vector(zPrimas),"
+"0","                     time = time(zPrimas))"
+"0",""
+"0","ggplot(df_new) + geom_point(aes(x = time, y = value)) + geom_line(aes(x = time,y = value)) +"
+"0","  geom_forecast(ForePrimasArima,alpha = 0.4) + ggtitle(""ARIMA: Predicción primas seguros"")"
+"2","Use autolayer instead of geom_forecast to add a forecast layer to your ggplot object."

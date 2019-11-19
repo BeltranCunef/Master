@@ -1,0 +1,6 @@
+"0","fets <- function(x, h) {"
+"0","  forecast(ets(x), h = h)"
+"0","}"
+"0","farima <- function(x, h) {"
+"0","  forecast(auto.arima(x), h = h)"
+"0","}"

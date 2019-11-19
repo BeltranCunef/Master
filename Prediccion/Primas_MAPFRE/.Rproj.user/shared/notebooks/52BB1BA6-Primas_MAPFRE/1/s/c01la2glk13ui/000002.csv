@@ -1,0 +1,8 @@
+"0",""
+"0","# selecciono automaticamente el ets"
+"0",""
+"0","etsfit <- ets(Observaciones)"
+"0",""
+"0","# prediccion del modelo"
+"0",""
+"0","ForePrimas <- forecast(etsfit)"

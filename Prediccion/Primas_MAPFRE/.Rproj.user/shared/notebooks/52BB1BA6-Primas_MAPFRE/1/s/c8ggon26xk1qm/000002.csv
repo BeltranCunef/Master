@@ -1,0 +1,5 @@
+"0","Primas <- read_delim(""data/Primas_mapfre.csv"", "
+"0","    "";"", escape_double = FALSE, col_types = cols(Fecha = col_date(format = ""%m/%d/%Y"")), "
+"0","    locale = locale(decimal_mark = "",""), "
+"0","    trim_ws = TRUE)"
+"0","View(Primas)"

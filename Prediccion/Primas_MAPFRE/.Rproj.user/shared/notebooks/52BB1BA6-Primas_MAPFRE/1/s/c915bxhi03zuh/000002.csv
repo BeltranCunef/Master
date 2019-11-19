@@ -1,0 +1,4 @@
+"0",""
+"0","# convierto la serie en trimestral"
+"0",""
+"0","xPrimas <- to.quarterly(xPrimas)"
