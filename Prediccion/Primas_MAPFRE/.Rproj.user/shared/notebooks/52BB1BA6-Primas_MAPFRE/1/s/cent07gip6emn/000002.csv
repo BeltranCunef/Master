@@ -1,2 +1,0 @@
-"0","ggplot(data = Primas, aes(x = Primas$Fecha)) + geom_smooth(aes(y = Primas$Primas_vida, colour = 'Primas_vida')) +"
-"0","  geom_smooth(aes(y = Primas$Primas_no_vida, colour = 'Primas_no_vida')) + geom_smooth(aes(y = Primas$Suma_Primas, colour = 'Suma_Primas')) + xlab('Fecha') + ylab('Primas') "

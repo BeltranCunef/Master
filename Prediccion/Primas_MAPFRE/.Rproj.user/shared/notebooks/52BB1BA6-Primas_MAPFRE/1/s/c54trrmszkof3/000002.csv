@@ -1,4 +1,0 @@
-"0",""
-"0","# convierto el dataframe a un objeto xts"
-"0",""
-"0","xPrimas <- xts(Primas$Suma_Primas, order.by = as.Date(Primas$Fecha, ""%Y%d%m""), frequency = 4)"

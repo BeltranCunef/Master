@@ -1,0 +1,262 @@
+---
+title: "Colgate_Crest"
+author: "Beltran Aller Lopez"
+date: "19/11/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+---
+TO DO LIST
+
+  *
+  *
+  *
+  *
+  
+LIBRARIES
+
+```{r message=FALSE}
+library(readr)
+library(TSA)
+library(ggplot2)
+library(forecast)
+library(zoo)
+library(xts)
+library(ggfortify)
+library(tseries)
+library(tsoutliers)
+```
+
+---
+
+# DATA
+
+```{r READING EXCEL, message=FALSE}
+cuotas <- read_delim("../data/cuotas.csv", ";", 
+    escape_double = FALSE, locale = locale(decimal_mark = ","), 
+    trim_ws = TRUE)
+View(cuotas)
+```
+
+Agrupamos por semanas.
+
+```{r TO DATE}
+cuotas$Date <- as.Date(paste(cuotas$Year, cuotas$Week, 1, sep = "-"), "%Y-%U-%u")
+cuotas <- dplyr::select(cuotas, -Year, -Week)
+```
+
+```{r AS DATA FRAME}
+cuotas <- as.data.frame(cuotas)
+```
+
+# TRANSFORMANDO
+
+```{r TO XTS}
+xCuotas <- xts(cuotas[,-3], order.by = cuotas$Date)
+xCuotas$Date = NULL
+```
+
+```{r TO ZOO}
+zCuotas <- as.zoo(xCuotas)
+```
+
+# PLOTTING
+
+En agosto de 1960, la asociación dental americana otorgó a Crest un sello de calidad, confirmando que dicha pasta prevenía de forma efectiva el deterioro de los dientos, esto produjo un impulso en las ventas de crest, que se situó por encima de colgate en cuota de mercado.
+
+```{r EVOLUCION CUOTAS}
+autoplot(zCuotas) + ylab('cuotas') + xlab('Year') + 
+  geom_vline(aes(xintercept = as.Date('1960-08-01'), col = "red"), show.legend = F)
+```
+
+
+Se comprueba que ambas series presentan tendencia, Crest creciente y Colgate decreciente. 
+
+# DIVISION
+
+```{r CREST}
+zCrest <- as.zoo(xCuotas$Crest)
+```
+
+```{r COLGATE}
+zColgate <- as.zoo(xCuotas$Colgate)
+```
+
+# SIN INTERVENCION
+
+## ESTIMACION ARIMA CREST
+
+En primer lugar compruebo a ver si la serie es estacionaria. lo hago mediante la prueba de Dickey-Fuller.
+
+```{r DICKEY-FULLER CREST}
+adf.test(zCrest, alternative = 'stationary')
+```
+
+Obtenemos un p-valor inferior a el nivel de significación, 0.05, por lo cual rechazamos la hipótesis nula, la serie es estacionaria en media.
+
+```{r BOX COX CREST}
+BoxCox.ar(zCrest)
+```
+
+El gráfico sugiere una posible transformación con raíz cuadrada para estabilizar la varianza.
+
+Generamos el training, estará compuesto por todas las observaciones a excepción de las 16 últimas.
+
+```{r SERIE OBSERVADA}
+ObservacionesCrest <- window(zCrest, start = index(zCrest[1]), end = index(zCrest[length(zCrest) - 16]))
+```
+
+```{r FIT CREST}
+FitCrest1 <- auto.arima(ObservacionesCrest, lambda = 'auto')
+summary(FitCrest1)
+```
+
+El mejor modelo es el ARIMA(0,1,1) teniendo en cuenta el parámetro AIC.
+
+```{r ERRORES ARIMA FIT CREST, warning=FALSE}
+ggtsdisplay(FitCrest1$residuals)
+```
+
+```{r CHECKING CREST}
+checkresiduals(FitCrest1)
+```
+
+Se observa que los residuos son ruido blanco, estadísticamente las autocorrelaciones son cero.
+
+```{r B-LJUNG TEST}
+Box.test(FitCrest1$residuals,lag = 9, fitdf = 1, type = "Lj")
+```
+
+El p-value obtenido es superior al nivel de significación, es decir, es superior a 0.05. por tanto, concluyo que las autocorrelaciones de los residuos son ruido blanco.
+
+```{r FORECAST}
+ForeCrest <- forecast(FitCrest1, h = 16)
+summary(ForeCrest)
+```
+
+```{r PLOT FORECREST}
+plot(ForeCrest)
+```
+
+## ESTIMACION PARA COLGATE
+
+En primer lugar compruebo a ver si la serie es estacionaria. lo hago mediante la prueba de Dickey-Fuller.
+
+```{r DICKEY-FULLER COLGATE}
+adf.test(zColgate, alternative = 'stationary')
+```
+
+Obtenemos un p-valor inferior a el nivel de significación, 0.05, por lo cual rechazamos la hipótesis nula, la serie es estacionaria en media.
+
+```{r BOX COX COLGATE}
+BoxCox.ar(zColgate)
+```
+
+El gráfico sugiere una posible transformación sobre la varianza.
+
+```{r SERIE OBSERVADA COLGATE}
+ObservacionesColgate <- window(zColgate, start = index(zColgate[1]), end = index(zColgate[length(zColgate) - 16]))
+```
+
+```{r FIT COLGATE}
+FitCol1 <- auto.arima(ObservacionesColgate)
+summary(FitCol1)
+FitCol2 <- auto.arima(ObservacionesColgate, lambda = 'auto')
+summary(FitCol2)
+```
+
+El mejor modelo es el ARIMA(0,1,1) teniendo en cuenta el parámetro AIC.
+
+```{r ERRORES ARIMA FIT COLGATE, warning=FALSE}
+ggtsdisplay(FitCol1$residuals)
+```
+
+```{r CHECKING COLGATE}
+checkresiduals(FitCol1)
+```
+
+Se observa que los residuos son ruido blanco, estadísticamente las autocorrelaciones son cero.
+
+```{r B-LJUNG TEST COLGATE}
+Box.test(FitCol1$residuals,lag = 8, fitdf = 1, type = "Lj")
+```
+
+Los p-value obtenido son superiores al nivel de significación, es decir, son superiores a 0.05. por tanto, concluyo que las autocorrelaciones de los residuos son ruido blanco.
+
+```{r FORECAST COLGATE}
+ForeCol <- forecast(FitCol1, h = 16)
+summary(ForeCol)
+```
+
+```{r PLOT FORECOL}
+plot(ForeCol)
+```
+ 
+# OUTLIERS
+
+```{r DETECT OUTLIERS}
+detectAO(FitCrest1) 
+detectAO(FitCol1) 
+detectIO(FitCrest1) 
+detectIO(FitCol1)
+```
+
+No se detectan outliers ni aditivos ni innovativos. 
+
+# MODELO DE INTERVENCION
+
+## CREST
+
+```{r ARIMAX CREST}
+arimax_crest <- arimax(as.double(zCrest), 
+                       order = c(0,1,1),
+                       xtransf = data.frame(A60_step = 1*(seq(zCrest) > 135),
+                                            A60_pulse = 1*(seq(zCrest) == 135)),
+                       xreg = data.frame(A60_2 = 1*(seq(zCrest) == 136)),
+                       transfer = list(
+                         c(0,0),
+                         c(1,0)
+                       ),
+                       method = 'ML')
+arimax_crest
+```
+
+```{r ARIMAX COLGATE}
+arimax_colgate <- arimax(as.double(zColgate), 
+                         order = c(0,1,1),
+                         xtransf = data.frame(A60_step = 1*(seq(zColgate) > 135),
+                                              A60_pulse = 1*(seq(zColgate) == 135)),
+                         transfer = list(c(0,0), c(1,0)),
+                         method = "ML")
+arimax_colgate
+```
+
+## OUTLIERS
+
+```{r OUTLIERS ARIMAX}
+detectAO(arimax_colgate) 
+detectAO(arimax_crest) 
+detectIO(arimax_colgate) 
+detectIO(arimax_crest)
+```
+
+# FUNCION DE TRANSFERENCIA
+
+```{r TRANSFERENCIA}
+transferencia <- arimax(as.double(zColgate),
+                        order = c(0,1,1), 
+                        include.mean = TRUE,
+                        xtransf = zCrest, 
+                        transfer = list(c(0,0)), 
+                        method = "ML")
+transferencia
+```
+
+```{r}
+plot(transferencia$coef, type = 'h')
+```
+

@@ -1,4 +1,0 @@
-"0",""
-"0","# creo una serie observada, empiezo en el primer elemento y finalizo 4 elementos antes"
-"0",""
-"0","Observaciones <- window(zPrimas, start = index(zPrimas[1]), end = index(zPrimas[length(zPrimas) - 4]))"
