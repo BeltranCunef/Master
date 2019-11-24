@@ -1,0 +1,205 @@
+---
+title: "Seguros_Final"
+author: "Beltran Aller Lopez"
+date: "24/11/2019"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# LIBRARIES
+
+```{r, message=FALSE}
+library(readr)
+library(tidyverse)
+library(dummies)
+```
+
+# DATA
+
+```{r}
+seguros <- read_delim("../data/EPF2018_segurosalud.csv", 
+    ";", escape_double = FALSE, col_types = cols(ESTUDREDSP = col_character(), 
+        NMIEM2 = col_number(), NMIEMB = col_number(), 
+        OCUSP = col_character(), REGTEN = col_character(), 
+        SEXOSP = col_character(), SUPERF = col_number(), 
+        TAMAMU = col_character(), TIPHOGAR3 = col_character()), 
+    trim_ws = TRUE)
+seguros <- as.data.frame(seguros)
+View(seguros)
+```
+
+En un primer momento se puede pensar que el año de concesión del seguro no tiene importancia, esto puede no ser así. Depende de la existencia de varias valores para el año, en caso de haber distintos valores, este podría tener significación, aunque no lo sabemos. Procedo a mirar el número de años distintos del dataset.
+
+```{r}
+unique(seguros$ANOENC)
+```
+
+Únicamente tenemos seguros que han sido concedidos en el 2018, por tanto en este aspecto las observaciones son todas homogéneas y la variables no nos aporta información, la elimino del dataset.
+
+```{r}
+seguros$ANOENC <- NULL
+```
+
+Se observa también la existencia de una variable que sirve a modo de index, 'NUMERO', esta tampoco tiene relevancia. La elimino.
+
+```{r}
+seguros$NUMERO <- NULL
+```
+
+Transformo la variable 'SUPERF' creando 4 rangos en funicón de la superficie de la casa.
+
+```{r}
+for (i in seq(length(seguros$SUPERF))) {
+    if (seguros$SUPERF[i] > 0 & seguros$SUPERF[i]  <= 35) {
+        seguros$SUPERF[i] = 1
+    }
+    else if (seguros$SUPERF[i] > 35 & seguros$SUPERF[i] <= 299) {
+        seguros$SUPERF[i] = 2
+    }
+    else if (seguros$SUPERF[i] >= 300) {
+        seguros$SUPERF[i] = 3
+    }
+    else {
+        seguros$SUPERF[i] = -9 # este seria el caso en que no constase la superficie de la vivienda, esto nos importa y lo codificamos tambien
+    }
+}
+```
+
+Tipifico como numéricas ciertas variables. Las variables ordinales, tales como los niveles de ingresos o el nivel de estudios no serán transformadas en dummies, las dejo como numéricas, puesto que ya poseen una estructura subyacente y el incremento de estas tiene un significado de por sí. Sabemos que a medida que se incrementa el valor de las variables, los ingresos y los estudios son mayores. 
+
+```{r}
+seguros$TIPHOGAR3 <- as.numeric(seguros$TIPHOGAR3)
+seguros$NUMOCUP <- as.numeric(seguros$NUMOCUP)
+seguros$TAMAMU <- as.numeric(seguros$TAMAMU)
+seguros$ESTUDREDSP <- as.numeric(seguros$ESTUDREDSP)
+seguros$OCUSP <- as.numeric(seguros$OCUSP)
+seguros$INTERINPSP <- as.numeric(seguros$INTERINPSP)
+seguros$REGTEN <- as.numeric(seguros$REGTEN)
+seguros$INTERIN <- as.numeric(seguros$INTERIN)
+seguros$SEXOSP <- as.factor(seguros$SEXOSP)
+```
+
+Elimino las observaciones que presentan valores omitidos.
+
+```{r}
+seguros <- na.omit(seguros)
+seguros <- subset(seguros, seguros$NUMOCUP >= 0 & seguros$TIPHOGAR3 >= 0 & seguros$SUPERF >= 0 & seguros$INTERINPSP >= 0)
+```
+
+Recodifico también el régimen de tenencia del hogar, de 6 tipos pasamos a únicamente 3.
+
+```{r}
+seguros$REGTEN[seguros$REGTEN == 1 | seguros$REGTEN == 2] <- 1
+seguros$REGTEN[seguros$REGTEN == 3 | seguros$REGTEN == 4] <- 2
+seguros$REGTEN[seguros$REGTEN == 5 | seguros$REGTEN == 6] <- 3
+```
+
+El tipo de hogar también será recodificado, pasando así de 12 posibles hogares a únicamente 5.
+
+```{r}
+seguros$TIPHOGAR3[seguros$TIPHOGAR3 == 1 | seguros$TIPHOGAR3 == 2 | seguros$TIPHOGAR3 == 3 | seguros$TIPHOGAR3 == 4] <- 1
+seguros$TIPHOGAR3[seguros$TIPHOGAR3 == 5 | seguros$TIPHOGAR3 == 6] <- 2
+seguros$TIPHOGAR3[seguros$TIPHOGAR3 == 7 | seguros$TIPHOGAR3 == 8 | seguros$TIPHOGAR3 == 9] <- 3
+seguros$TIPHOGAR3[seguros$TIPHOGAR3 == 10 | seguros$TIPHOGAR3 == 11] <- 4
+seguros$TIPHOGAR3[seguros$TIPHOGAR3 == 12] <- 5
+```
+
+```{r}
+seguros$Seguro_salud <- factor(seguros$Seguro_salud, levels = c(0,1), labels = c('Sin seguro', 'Con seguro'))
+```
+
+```{r}
+summary(seguros)
+```
+Divimos el dataset en dos partes, una de entrenamiento y otra de validación, la proporción será de 70:30.
+
+```{r}
+set.seed(1234)
+division <- sample(nrow(seguros), 0.7 * nrow(seguros))
+entrenamiento <- seguros[division,]
+validacion <- seguros[-division,]
+```
+
+Comprobamos que la muestra está balanceada.
+
+```{r}
+table(entrenamiento$Seguro_salud)
+```
+
+```{r}
+table(validacion$Seguro_salud)
+```
+
+A continuación procedo a la estimación del modelo logístico.
+
+```{r}
+modelo1 <- glm(entrenamiento$Seguro_salud~., data = entrenamiento, family = 'binomial')
+summary(modelo1)
+```
+
+Se observa que algunas variables, tales como el número d emiebos del hogar, el sexo, el número de miembros ocupados, el régimen de tenencia de la casa o si el sustentador principal se encontraba ocupado antes de la encuesta, no paracen tener relevancia en el modelo. a continuacón paso a observar los odd ratio e interpretarlos.
+
+```{r}
+exp(coef(modelo1))
+```
+
+El tamaño del municipio presenta un odd ratio inferior a 1, esto quiere decir que conforme se incrementa un punto esta variable, es decir, en nuestro caso se pasa de un municipio mayor a uno de menos habitantes, la probabilidad de tener un seguro de vida privado disminuye frente a no tenerlo.
+
+Si se incrementa el número d ehijos menores de 14 años sucede al revés, la probabilidad de tener un seguro de vida `privado aumenta respecto a la de no tenerlo.
+
+La edad afecta positivamente tambíen, a mayor edad, mayor probabilidad de tenerle frente a no tenerlo.
+
+El nivel de estudios también afecta considerablemente, a medida que subimos en la categoría de nivel de estudios, es decir, la gente presenta niveles de estudios mayores, aumenta la probabilidad de poseer un seguro de vida privado frente a no poseerlo.
+
+El nivel de ingresos del sustentador pricipal, así como el nivel de ingresos general de la familia, afectan a las probabilidades también. Según subimos en las distintas categorías de niveles de ingresos, se observan ingresos cada vez mayores, es mayor la probabilidad de tener un seguro de vida privado frente a no tenerlo.
+
+La superficie de la vivienda se comporta también de la misma forma.
+
+Un caso relevante es el tipo de hogar, si pasamos de un hogar unipersonal a un hogar en pareja sin hijos las probabilidades empeorean. Y si pasamos de uno en pareja sin hijos a uno en pareja con hijos aún más.
+
+```{r}
+hist(predict(modelo1, entrenamiento, type = "response"))
+```
+
+El gráfico anterior nos da una idea de donde podemos situar el punto de corte acorde a la distribución de las frecuencias en el set de entrenamiento. Lo situaré en 0.4.
+
+Primero realizo la prueba en el set de entrenamiento.
+
+```{r}
+probalidad_entrenamiento <- predict(modelo1, entrenamiento, type = "response")
+```
+
+```{r}
+logit.pred.entrenamiento <- factor(probalidad_entrenamiento > .4, levels = c(FALSE, TRUE), labels = c("Sin seguro", "Con seguro"))
+```
+
+```{r}
+logit.perf.entrenamiento <- table(entrenamiento$Seguro_salud, logit.pred.entrenamiento, dnn = c("Actual", "Predicted"))
+logit.perf.entrenamiento
+```
+
+Se observa un accuracy del 90% para la parte de entrenamiento, a continuación realizaré lo mismo para la parte de validación, de esta forma compruebo si el modelo presenta overfitting.
+
+```{r}
+probalidad_validacion <- predict(modelo1, validacion, type = "response")
+```
+
+```{r}
+logit.pred.validacion <- factor(probalidad_validacion > .4, levels = c(FALSE, TRUE), labels = c("Sin seguro", "Con seguro"))
+```
+
+```{r}
+logit.perf.validacion <- table(validacion$Seguro_salud, logit.pred.validacion, dnn = c("Actual", "Predicted"))
+logit.perf.validacion
+```
+
+Para la parte de validación se observa un accuracy del 91%, por tanto, no se aprecia overfitting en el modelo. Dicho esto se puede afirmar que el modelo rinde a muy buen nivel, puesto que solo clasifica mal entre el 9 y 10% de los casos aproximadamente. Aún así, cabría reestimar el modelo, puesto que la tasa de verdaderos positivos resulta baja.
+
+
+
+
