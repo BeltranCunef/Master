@@ -226,14 +226,14 @@ ggplot(tterreno, aes(x = plazas, y = peso)) + geom_boxplot(color = 'red', fill =
 
 No nos interesan ni el modelo, puesto que no nos aporta información para agrupar diferentes tipos de todoterrenos, si quisieramos agruparlos en base al modelo, ya lo habríamos hecho; ni tampoco la marca por la misma razón que el modelo. Elimino tales variables del dataset.
 
-```{r DELETTING MARCA AND MODELO}
-tterreno <- select(tterreno, -marca, -modelo)
+```{r DELETTING MARCA, MODELO Y PRECIO}
+tterreno <- select(tterreno, -marca, -modelo, -pvp)
 ```
 
 # CORRELACIONES
 
 ```{r MATRIZ DE CORRELACIONES}
-corrplot(round(cor(tterreno[,c(3:6, 8:12)], method = 'pearson'), 2), method = 'number', type = 'lower')
+corrplot(round(cor(tterreno[,c(2:5, 7:11)], method = 'pearson'), 2), method = 'number', type = 'lower')
 ```
 
 # ESCALADO
@@ -261,15 +261,68 @@ tterreno <- tipificar(tterreno)
 summary(tterreno)
 ```
 
-# DISTANCIAS
+# CLUSTER
 
-## ENTRE OBSERVACIONES
+## K-MEANS
 
-```{r OBJETO DISTANCIAS OBSERVACIONES}
-distancias_observaciones_coches <- get_dist(tterreno, method = 'pearson')
+Para la realización de un análisis de conglomerados o clúster, una vez hecho previamente el análisis exploratorio correspondiente y escaladas las variables, el primer paso será el cálculo de las distancias. Representaré la matriz de distancias calculada a través de las correlaciones y de las distancias euclídeas de las observaciones. Dichas matrices nos sirven como medida de la similitud entre las observaciones.
+
+```{r OBJETO DISTANCIAS OBSERVACIONES COR}
+distancias_observaciones_coches <- get_dist(tterreno[,c(2:5, 7:11)], method = 'pearson')
 ```
 
-```{r MATRIZ DISTANCIAS OBSERVACIONES}
+```{r MATRIZ DISTANCIAS OBSERVACIONES COR}
 fviz_dist(distancias_observaciones_coches)
 ```
+
+Del análisis de la matriz de distancias basadas en la correlación no se puede extraer el número de clúster, en los cuales a priori va a ser dividida la muestra.
+
+A continuación calculo la matriz de distancias euclídeas como segunda medida de similitud.
+
+```{r DISTANCIAS EUCLIDEAS COCHES}
+distancias_euclidean_coches <- get_dist(tterreno[,c(2:5, 7:11)], method = 'euclidean')
+```
+
+```{r MATRIZ DISTANCIAS EUCLIDEAS}
+fviz_dist(distancias_euclidean_coches)
+```
+
+Resulta difícil establecer cuál será el número óptimo de grupos basándose únicamente en las matrices de distancias, por ello, procedo a visualizar como evoluciona la suma total de cuadrados internos en función del número de clúster.
+
+```{r}
+fviz_nbclust(x = tterreno, kmeans, FUNcluster = kmeans, method = "wss", k.max = 10, 
+             diss = distancias_euclidean_coches, nstart = 75)
+```
+
+Parace que a partir de 6 grupos la reducción de la suma total de cuadrados internos se estabiliza, por tanto y, atendiendo también a la regla del codo, establezco el número óptimo de clúster en 6. dicha decisión es momentanea, puesto que se limita a que en cada clúster haya como máximo 15 coches, todavía no se sabe si pueden hacer falta más grupos para cumplir tal condición.
+
+```{r}
+clust_coches <- eclust(tterreno[,c(2:5, 7:11)], FUNcluster = 'kmeans', stand = F, hc_metric = 'euclidean', nstart = 25, k = 6)
+```
+
+```{r}
+clust_coches$size
+```
+
+## K-MEDIANS
+
+```{r DISTANCIAS EUCLIDEAS COCHES}
+distancias_manh_coches <- get_dist(tterreno[,c(2:5, 7:11)], method = 'manhattan')
+```
+
+```{r MATRIZ DISTANCIAS EUCLIDEAS}
+fviz_dist(distancias_manh_coches)
+```
+
+```{r}
+fviz_nbclust(x = tterreno[,c(2:5, 7:11)], FUNcluster = pam, method = "wss", k.max = 10, 
+             diss = distancias_manh_coches)
+```
+
+```{r}
+clust_coches <- eclust(tterreno[,c(2:5, 7:11)], FUNcluster = 'kmeans', stand = F, hc_metric = 'manhattan', k = 3)
+```
+
+
+
 

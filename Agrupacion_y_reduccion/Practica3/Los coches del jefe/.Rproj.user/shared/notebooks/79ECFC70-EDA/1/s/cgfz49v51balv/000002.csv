@@ -1,1 +1,1 @@
-"0","tterreno <- select(tterreno, -marca, -modelo)"
+"0","tterreno <- select(tterreno, -marca, -modelo, -pvp)"
